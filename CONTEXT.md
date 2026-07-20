@@ -101,7 +101,7 @@ Write on each generated annotation:
   (US 10,534,859 family). Static summary tables are fine.
 - NO color/size pre-filtered visual template search per US 9,846,707 specifics.
 
-## Module APIs (implement exactly; all pure-Python, py311, deps: pymupdf, pikepdf)
+## Module APIs (implement exactly; all pure-Python, py311, deps: pypdfium2, pikepdf)
 
 ```python
 # reassemble.py
@@ -167,3 +167,32 @@ no type-checking framework. Tests: pytest, fixtures referenced relative to repo 
 - A handful of small-dim near-miss flags of the same class appear on both
   fixtures (all review-tier, none false passes).
 - No warehouse/industrial quantity rule pack yet (by design; shed pack only).
+
+## PDF backend swap: PyMuPDF -> pypdfium2 (2026-07-20)
+
+**Why:** PyMuPDF is AGPL-3.0 (commercial-distribution risk). pypdfium2 is
+Apache-2.0 / BSD-3-Clause (permissive, $0). Only the *extraction* stage touched
+the library, so the swap is contained.
+
+**What changed (src/xray only — the shipped engine is now fitz-free):**
+- `reassemble.extract_words(doc, page_no)` rebuilt on PDFium character boxes:
+  group chars into whitespace-delimited tokens; **flip y** (PDFium is
+  bottom-left / y-up) to the top-left / y-down convention the Word contract and
+  the whole pipeline assume. `doc` is now a `pypdfium2.PdfDocument`.
+- `engine._page_kind` uses `PdfImage.get_px_size()` for the raster pixel test
+  (PDFium `PdfImage` has no `get_pos`; per-image try/except so one missing
+  method can't abort detection). `get_size()` for page dims,
+  `get_metadata_value("Producer")` for producer.
+
+**Re-proven (all 86 tests green, both fixtures):**
+- Shed quantities IDENTICAL: 5 frames (reconciled), 87.7 lm steel (reconciled),
+  183.5 m2 cladding (needs-human); checks 5 pass / 4 flag.
+- Warehouse acceptance chain `13530 + 16465 = 29995` still reconciles (pass);
+  glyph-split targets 29995/13530/2745/5010/6700 all recovered after reassembly.
+- Re-baselined (legitimate backend tokenisation difference, NOT a regression):
+  sheet-04 raw token count 1026 -> 1032; the PyMuPDF-specific `150`+`0`->`1500`
+  micro-case tokenises differently under PDFium, so that unit test now asserts
+  the equivalent real recovery (13530 absent->present) instead.
+
+**Still on fitz (dev-only, NOT shipped, NOT in requirements):** the DXF export
+tool + `tools/extract_entities.py` / `tools/probe_layers.py`. Migrate in P8.

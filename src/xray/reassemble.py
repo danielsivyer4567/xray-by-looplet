@@ -29,11 +29,11 @@ page 0, a clean Skia/Chromium print where reassemble must be a no-op):
 from dataclasses import dataclass, replace
 import re
 
-import fitz  # pymupdf
+import pypdfium2 as pdfium
 
 
 @dataclass
-class Word:  # PDF points, origin top-left as PyMuPDF delivers
+class Word:  # PDF points, origin top-left (flipped from PDFium's y-up)
     text: str
     x0: float
     y0: float
@@ -61,18 +61,47 @@ JUNK_MAX_DIGITS = 6
 RE_NUMERIC = re.compile(r"[0-9.,]+")
 
 
-def extract_words(doc: fitz.Document, page_no: int) -> list[Word]:
-    """Raw text-layer words of page `page_no` (0-based), source='text'."""
+def extract_words(doc, page_no: int) -> list[Word]:
+    """Raw text-layer words of page `page_no` (0-based), source='text'.
+
+    Backed by pypdfium2 (PDFium, permissive licence). PDFium delivers per-
+    character boxes in a bottom-left / y-up space; we group characters into
+    whitespace-delimited tokens (matching PyMuPDF's word segmentation) and
+    flip y to the top-left / y-down convention the Word contract and the rest
+    of the pipeline expect.
+    """
     page = doc[page_no]
-    out = []
-    for x0, y0, x1, y1, txt, *_ in page.get_text("words"):
-        t = txt.strip()
-        if not t:
-            continue
-        out.append(Word(text=t, x0=float(x0), y0=float(y0),
-                        x1=float(x1), y1=float(y1),
-                        page=page_no, source="text"))
-    return out
+    _w, page_h = page.get_size()
+    tp = page.get_textpage()
+    try:
+        n = tp.count_chars()
+        out = []
+        buf = []  # (char_str, (left, bottom, right, top))
+
+        def flush():
+            if not buf:
+                return
+            text = "".join(c for c, _ in buf).strip()
+            if text:
+                x0 = min(b[0] for _, b in buf)
+                x1 = max(b[2] for _, b in buf)
+                y0 = min(page_h - b[3] for _, b in buf)  # top edge (flip)
+                y1 = max(page_h - b[1] for _, b in buf)  # bottom edge (flip)
+                out.append(Word(text=text, x0=float(x0), y0=float(y0),
+                                x1=float(x1), y1=float(y1),
+                                page=page_no, source="text"))
+            buf.clear()
+
+        for i in range(n):
+            ch = tp.get_text_range(i, 1)
+            if ch == "" or ch.isspace():
+                flush()
+                continue
+            buf.append((ch, tp.get_charbox(i)))
+        flush()
+        return out
+    finally:
+        tp.close()
 
 
 def reassemble(words: list[Word]) -> list[Word]:

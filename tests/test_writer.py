@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 import pikepdf
-import fitz  # PyMuPDF
+import pypdfium2 as pdfium
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
@@ -28,8 +28,9 @@ EXPECTED_NEW_ANNOTS = 4
 
 
 def make_result():
-    with fitz.open(FIXTURE) as doc:
-        w, h = doc[0].rect.width, doc[0].rect.height
+    _pdf = pdfium.PdfDocument(str(FIXTURE))
+    w, h = _pdf[0].get_size()
+    _pdf.close()
     return {
         "engine": {"name": "xray-by-looplet", "version": "0.1.0"},
         "document": {
@@ -179,12 +180,15 @@ def test_takeoff_json_attachment_roundtrips(marked):
     assert json.loads(data.decode("utf-8")) == result
 
 
-def test_output_reopens_in_pymupdf_and_renders(marked):
+def test_output_reopens_and_renders(marked):
     out, _result, _baseline, _sha = marked
-    with fitz.open(out) as doc:
-        assert doc.page_count == 5  # shed fixture is 5 pages
-        pix = doc[0].get_pixmap()
-        assert pix.width > 0 and pix.height > 0
+    pdf = pdfium.PdfDocument(str(out))
+    try:
+        assert len(pdf) == 5  # shed fixture is 5 pages
+        bitmap = pdf[0].render(scale=1.0)
+        assert bitmap.width > 0 and bitmap.height > 0
+    finally:
+        pdf.close()
 
 
 def test_source_pdf_untouched(marked):

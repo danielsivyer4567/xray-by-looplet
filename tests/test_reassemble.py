@@ -14,7 +14,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-import fitz  # noqa: E402
+import pypdfium2 as pdfium  # noqa: E402
 from xray.reassemble import Word, extract_words, reassemble  # noqa: E402
 
 WAREHOUSE = ROOT / "fixtures" / "warehouse-design21.pdf"
@@ -39,7 +39,7 @@ def make(text, x0, y0, x1, y1, page=0, source="text"):
 
 @pytest.fixture(scope="module")
 def warehouse_p3():
-    doc = fitz.open(str(WAREHOUSE))
+    doc = pdfium.PdfDocument(str(WAREHOUSE))
     words = extract_words(doc, 3)  # 0-based: sheet 04
     doc.close()
     return words
@@ -47,7 +47,7 @@ def warehouse_p3():
 
 @pytest.fixture(scope="module")
 def shed_p0():
-    doc = fitz.open(str(SHED))
+    doc = pdfium.PdfDocument(str(SHED))
     words = extract_words(doc, 0)
     doc.close()
     return words
@@ -56,7 +56,7 @@ def shed_p0():
 # --- extract_words -----------------------------------------------------------
 
 def test_extract_words_shape(warehouse_p3):
-    assert len(warehouse_p3) == 1026  # empirical, sheet 04
+    assert len(warehouse_p3) == 1032  # empirical, sheet 04 (pypdfium2 tokenisation)
     for w in warehouse_p3:
         assert isinstance(w, Word)
         assert w.page == 3
@@ -101,12 +101,19 @@ def test_warehouse_existing_chain_members_survive(warehouse_p3):
     assert after["16465"] >= 1
 
 
-def test_warehouse_true_glyph_split_merged(warehouse_p3):
-    """'150' + '0' at y~730 (gap 1.05pt, 35% char width) -> '1500'."""
+def test_warehouse_fragmented_dim_recovered(warehouse_p3):
+    """A fragmented dimension absent from the raw text layer is recovered by
+    reassembly on real fixture data, and the mechanism genuinely engages.
+
+    (The original PyMuPDF-specific '150'+'0' -> '1500' instance tokenises
+    differently under pypdfium2/PDFium; 13530 is the equivalent real recovery
+    and it reconciles the 13530+16465=29995 chain on sheet 04.)"""
     before = texts(warehouse_p3)
-    after = texts(reassemble(warehouse_p3))
-    assert before["1500"] == 0
-    assert after["1500"] == 1
+    reassembled = reassemble(warehouse_p3)
+    after = texts(reassembled)
+    assert before["13530"] == 0
+    assert after["13530"] == 1
+    assert any(w.source == "reassembled" for w in reassembled)
 
 
 # --- acceptance: shed page 0 is a near-passthrough ----------------------------

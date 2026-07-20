@@ -13,7 +13,8 @@ import re
 from dataclasses import asdict
 from pathlib import Path
 
-import fitz  # pymupdf
+import pypdfium2 as pdfium
+import pypdfium2.raw as pdfium_c
 
 from xray import ENGINE_NAME, __version__
 from xray.chains import Check, find_chain_checks, trig_check
@@ -42,23 +43,36 @@ def _sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def _page_kind(page: fitz.Page, n_words: int) -> str:
+def _page_kind(page, n_words: int) -> str:
     """vector | raster | sparse (see CONTEXT.md; Paper Capture scans keep an
     invisible OCR text layer, so image coverage decides raster, not words)."""
-    page_area = abs(page.rect) or 1.0
-    imgs = []
+    w, h = page.get_size()
+    page_area = (w * h) or 1.0
+    max_cover = 0.0
+    max_px = 0
     try:
-        imgs = page.get_images(full=True)
-        for img in imgs:
-            for r in page.get_image_rects(img[0]):
-                if abs(r) >= RASTER_COVER_FRACTION * page_area:
-                    return "raster"
+        for obj in page.get_objects(max_depth=8):
+            if obj.type != pdfium_c.FPDF_PAGEOBJ_IMAGE:
+                continue
+            # placed coverage on the page (if this build exposes it)
+            try:
+                l, b, r, t = obj.get_pos()
+                max_cover = max(max_cover, abs((r - l) * (t - b)) / page_area)
+            except Exception:
+                pass
+            # raw pixel dimensions (reliable across builds)
+            try:
+                pw, ph = obj.get_px_size()
+                max_px = max(max_px, int(pw) * int(ph))
+            except Exception:
+                pass
     except Exception:
         pass
+    if max_cover >= RASTER_COVER_FRACTION:
+        return "raster"
     # Paper Capture scans report unreliable placement rects; a big embedded
     # bitmap on a page with only OCR-level text is a scanned sheet
-    if n_words < RASTER_MAX_WORDS and any(
-            img[2] * img[3] >= RASTER_MIN_PIXELS for img in imgs):
+    if n_words < RASTER_MAX_WORDS and max_px >= RASTER_MIN_PIXELS:
         return "raster"
     return "vector" if n_words >= SPARSE_WORD_COUNT else "sparse"
 
@@ -97,16 +111,17 @@ def _count_checks(spec: dict, entities) -> list[Check]:
 def run(pdf_path: str) -> dict:
     """Full pipeline. Returns a TakeoffResult dict (see schema)."""
     p = Path(pdf_path)
-    doc = fitz.open(p)
+    doc = pdfium.PdfDocument(str(p))
     try:
         pages_meta = []
         all_entities = []
         all_checks: list[Check] = []
-        for i in range(doc.page_count):
+        for i in range(len(doc)):
             page = doc[i]
             raw = extract_words(doc, i)
             words = reassemble(raw)
-            rect = (page.rect.width, page.rect.height)
+            w, h = page.get_size()
+            rect = (w, h)
             entities = classify(words, rect)
             scale = vote_scale(entities, rect, None)
             checks = find_chain_checks(entities, rect)
@@ -114,12 +129,15 @@ def run(pdf_path: str) -> dict:
             all_checks.extend(checks)
             pages_meta.append({
                 "n": i + 1,
-                "widthPt": float(page.rect.width),
-                "heightPt": float(page.rect.height),
+                "widthPt": float(w),
+                "heightPt": float(h),
                 "kind": _page_kind(page, len(raw)),
                 "scale": scale,
             })
-        producer = (doc.metadata or {}).get("producer") or ""
+        try:
+            producer = doc.get_metadata_value("Producer") or ""
+        except Exception:
+            producer = ""
     finally:
         doc.close()
 

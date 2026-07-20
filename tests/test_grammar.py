@@ -13,7 +13,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-import fitz
+import pypdfium2 as pdfium
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
@@ -23,6 +23,7 @@ if str(REPO / "src") not in sys.path:
 from xray import grammar, scale  # noqa: E402
 from xray.grammar import classify, parse_spec_token, normalize_tag  # noqa: E402
 from xray.scale import vote_scale  # noqa: E402
+from xray.reassemble import extract_words  # noqa: E402
 
 SHED_PDF = REPO / "fixtures" / "shed-manners-aline.pdf"
 
@@ -45,10 +46,10 @@ def _word(text, x0=100.0, y0=100.0, w=30.0, h=8.0, page=0, source="text"):
 
 @pytest.fixture(scope="module")
 def shed_page0():
-    doc = fitz.open(str(SHED_PDF))
-    page = doc[0]  # 0-based: sheet 1
-    words = page.get_text("words")
-    rect = (page.rect.width, page.rect.height)
+    doc = pdfium.PdfDocument(str(SHED_PDF))
+    words = extract_words(doc, 0)  # 0-based: sheet 1 (raw text-layer words)
+    w, h = doc[0].get_size()
+    rect = (w, h)
     ents = classify(words, rect)
     yield ents, rect
     doc.close()
