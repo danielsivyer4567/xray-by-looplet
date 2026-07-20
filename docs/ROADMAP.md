@@ -224,3 +224,12 @@ all outputs · marks + UUIDs preserved end-to-end.
 
 *Source of truth for design decisions: `CONTEXT.md`. Integration entry point:
 `docs/HANDOVER.md`. This file is the build order.*
+
+## 8. Decisions log
+
+| Date | Decision | Choice |
+|---|---|---|
+| 2026-07-20 | P2 location model | **Regional price lists** — one dated list per region; every price is exactly what that region pays |
+| 2026-07-20 | P3 labour starting point | **Editable defaults approved** — template defaults ship, clearly marked, refined in-app |
+| 2026-07-20 | P4 automations target | **Looplet's own builder** — X-Ray exposed as an MCP/HTTP node native to Looplet |
+| 2026-07-20 | Licence path | Pending — pypdfium2 swap explained, user deciding |

@@ -1,0 +1,11 @@
+item_class,unit,hours_per_unit,min_crew,effective_date,region,notes
+portal frame erection,ea,6.0,2,2026-07-15,QLD-SE,EDITABLE DEFAULT - replace with your numbers
+roof sheeting install,m2,0.15,2,2026-07-15,QLD-SE,EDITABLE DEFAULT
+wall cladding install,m2,0.12,2,2026-07-15,QLD-SE,EDITABLE DEFAULT
+roller door install,ea,3.0,2,2026-07-15,QLD-SE,EDITABLE DEFAULT
+PA door install,ea,1.5,1,2026-07-15,QLD-SE,EDITABLE DEFAULT
+
+role,rate_aud_per_hr,effective_date,region,notes
+installer,95.00,2026-07-15,QLD-SE,EDITABLE DEFAULT - replace with your rates
+leading hand,110.00,2026-07-15,QLD-SE,EDITABLE DEFAULT
+apprentice,55.00,2026-07-15,QLD-SE,EDITABLE DEFAULT

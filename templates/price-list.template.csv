@@ -1,0 +1,9 @@
+item,alias,unit,price_aud,effective_date,region,supplier,notes
+portal frame steel,"portal steel;UB/UC members;frame steel",lm,38.50,2026-07-15,QLD-SE,SAMPLE-Steelco,SAMPLE PRICE - replace with yours
+roof sheeting,"corro roof;corrugated colorbond roof;roof iron",m2,24.90,2026-07-15,QLD-SE,SAMPLE-Metro,SAMPLE PRICE - replace with yours
+wall cladding,"wall sheets;corrugated colorbond wall;wall iron",m2,23.40,2026-07-15,QLD-SE,SAMPLE-Metro,SAMPLE PRICE - replace with yours
+opening D0,"roller door 3400x2850;RD 3400",ea,1890.00,2026-07-15,QLD-SE,SAMPLE-DoorCo,SAMPLE PRICE - replace with yours
+opening D1,"roller door 3400x2850 B;RD 3400 B",ea,1890.00,2026-07-15,QLD-SE,SAMPLE-DoorCo,SAMPLE PRICE - replace with yours
+opening D2,"roller door 3000x2850;RD 3000",ea,1720.00,2026-07-15,QLD-SE,SAMPLE-DoorCo,SAMPLE PRICE - replace with yours
+opening D3,"PA door 2040x820;personal access door",ea,640.00,2026-07-15,QLD-SE,SAMPLE-DoorCo,SAMPLE PRICE - replace with yours
+portal frames,"frame erection kit;portal frame assembly",ea,0.00,2026-07-15,QLD-SE,,assembled from members - price via BOM in P6 or set a lump rate here
