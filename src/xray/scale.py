@@ -82,13 +82,38 @@ def _in_titleblock(bbox, w: float, h: float) -> bool:
     return x0 > w * TB_X_FRAC and y0 > h * TB_Y_FRAC
 
 
-def vote_scale(entities, page_rect, declared: str | None) -> dict:
+def calibrate(p0, p1, known_mm) -> dict:
+    """Manual scale from two points (PDF points) + the real distance (mm)
+    between them. Wins over auto-voting; confidence 1.0, verified True."""
+    import math
+    dist = math.hypot(float(p1[0]) - float(p0[0]), float(p1[1]) - float(p0[1]))
+    known = float(known_mm)
+    if dist <= 0 or known <= 0:
+        return {"value": None, "mmPerPt": None, "methods": [],
+                "confidence": 0.0, "verified": False}
+    mmpp = known / dist
+    return {"value": f"1:{mmpp / MM_PER_PT:.0f}", "mmPerPt": mmpp,
+            "methods": ["manual-calibration"], "confidence": 1.0, "verified": True}
+
+
+def vote_scale(entities, page_rect, declared: str | None,
+               calibration=None) -> dict:
     """Vote on the page scale.
 
-    Returns {"value": "1:100", "mmPerPt": 35.277..., "methods": [...],
-             "confidence": 0..1} per CONTEXT.md / schema. With zero evidence
-    returns value None and confidence 0.0.
+    A manual `calibration` (dict with p0/p1/known_mm, or {"mmPerPt": ...}) wins
+    outright. Returns {"value","mmPerPt","methods","confidence","verified"};
+    `verified` is False when the winner rests only on the weak paper-size prior.
+    With zero evidence returns value None, confidence 0.0.
     """
+    if calibration:
+        if calibration.get("mmPerPt"):
+            mmpp = float(calibration["mmPerPt"])
+            return {"value": f"1:{mmpp / MM_PER_PT:.0f}", "mmPerPt": mmpp,
+                    "methods": ["manual-calibration"], "confidence": 1.0,
+                    "verified": True}
+        if all(k in calibration for k in ("p0", "p1", "known_mm")):
+            return calibrate(calibration["p0"], calibration["p1"],
+                             calibration["known_mm"])
     w, h = _page_wh(page_rect)
     votes: dict[int, float] = {}
     methods: dict[int, list[str]] = {}
@@ -119,7 +144,8 @@ def vote_scale(entities, page_rect, declared: str | None) -> dict:
         _vote(_PAPER_PRIOR_RATIO, W_PAPER, "paper-size")
 
     if not votes:
-        return {"value": None, "mmPerPt": None, "methods": [], "confidence": 0.0}
+        return {"value": None, "mmPerPt": None, "methods": [],
+                "confidence": 0.0, "verified": False}
 
     winner = max(votes, key=lambda r: (votes[r], -r))
     total = sum(votes.values())
@@ -129,4 +155,5 @@ def vote_scale(entities, page_rect, declared: str | None) -> dict:
         "mmPerPt": MM_PER_PT * winner,
         "methods": methods[winner],
         "confidence": confidence,
+        "verified": any(m != "paper-size" for m in methods[winner]),
     }

@@ -80,8 +80,13 @@ def _page_kind(page, n_words: int) -> str:
     return "vector" if n_words >= SPARSE_WORD_COUNT else "sparse"
 
 
-def run(pdf_path: str) -> dict:
-    """Full pipeline. Returns a TakeoffResult dict (see schema)."""
+def run(pdf_path: str, calibrations: dict | None = None) -> dict:
+    """Full pipeline. Returns a TakeoffResult dict (see schema).
+
+    `calibrations`: optional {page_index (0-based): calibration} where a
+    calibration is {"p0":[x,y], "p1":[x,y], "known_mm": float} or
+    {"mmPerPt": float}. A calibrated page's scale wins over auto-voting.
+    """
     p = Path(pdf_path)
     doc = pdfium.PdfDocument(str(p))
     try:
@@ -96,7 +101,7 @@ def run(pdf_path: str) -> dict:
             w, h = page.get_size()
             rect = (w, h)
             entities = classify(words, rect)
-            scale = vote_scale(entities, rect, None)
+            scale = vote_scale(entities, rect, None, (calibrations or {}).get(i))
             checks = find_chain_checks(entities, rect)
             all_entities.extend(entities)
             all_checks.extend(checks)

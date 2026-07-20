@@ -38,7 +38,8 @@
                   "value": { "type": "string" },
                   "mmPerPt": { "type": "number" },
                   "methods": { "type": "array", "items": { "type": "string" } },
-                  "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+                  "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "verified": { "type": "boolean" }
                 }
               }
             }
