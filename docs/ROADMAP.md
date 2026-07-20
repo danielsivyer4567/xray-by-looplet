@@ -233,3 +233,41 @@ all outputs · marks + UUIDs preserved end-to-end.
 | 2026-07-20 | P3 labour starting point | **Editable defaults approved** — template defaults ship, clearly marked, refined in-app |
 | 2026-07-20 | P4 automations target | **Looplet's own builder** — X-Ray exposed as an MCP/HTTP node native to Looplet |
 | 2026-07-20 | Licence path | Pending — pypdfium2 swap explained, user deciding |
+
+## 9. P3 expansion — overhead recovery & on-costs (added 2026-07-20)
+
+The estimate stack is deeper than materials + labour + margin. Full order:
+
+1. **Materials** — P2, dated price list.
+2. **Labour** — base hours x rate.
+3. **Labour on-costs (burden)** — super, workers comp, leave, payroll tax.
+   These sit ON the labour rate (turn a base wage into true employee-hour cost),
+   captured in labour-norms. Workers-comp insurance lives here.
+4. **Business overhead recovery** — insurance (public liability), vehicle, tools,
+   rent, admin, software, licensing, marketing. Recovered as a **daily overhead
+   rate x job duration**: `daily = SUM(annual overheads) / productive_days_per_year`;
+   `job_overhead = daily x duration_days`, where duration derives from the labour
+   hours already computed. Longer job carries more overhead, automatically.
+5. **Contingency** — optional % buffer for unknowns.
+6. **Margin** — profit, on top of 1-5.
+
+**Overhead is cost recovery (break-even on running the business); margin is
+profit. Keep them separate** — conflating them under-recovers on busy periods.
+
+Input: `templates/overhead-schedule.template.csv` (dated, region-scoped,
+editable defaults). Same laws: user's numbers, provenance-stamped, engine does
+the arithmetic — never an LLM.
+**Gate:** shed estimate shows all six layers itemised; daily-overhead maths
+tested; duration derived from labour hours.
+
+## 10. Refinements — 2026-07-20
+
+- **Pricing templates are scaffolds, not schemas.** Structure varies per
+  builder; we don't prescribe it. **Unit of measure is the join key** — the
+  engine emits quantities with units; a price row matches on item/alias + unit
+  and multiplies only when units agree. Where the user prices in a different
+  unit than emitted (steel per t vs lm), a deterministic standards-pack
+  conversion bridges it, else flag. See `templates/README.md`.
+- **Licence decision: DEFERRED** — see `docs/LICENCE-TODO.md`. Revisit before
+  commercial distribution. pypdfium2 confirmed **$0 licence** (permissive); the
+  swap's only cost is engineering, and it's contained to one module.

@@ -1,0 +1,19 @@
+category,item,amount_aud,period,effective_date,region,notes
+Insurance,Public liability,4500,annual,2026-07-15,QLD-SE,SAMPLE - replace with yours
+Insurance,Professional indemnity,3200,annual,2026-07-15,QLD-SE,SAMPLE
+Vehicle,Ute lease + fuel + rego + maintenance,18000,annual,2026-07-15,QLD-SE,SAMPLE
+Tools & equipment,Purchase + repair + depreciation,6000,annual,2026-07-15,QLD-SE,SAMPLE
+Premises,Yard / office rent,14400,annual,2026-07-15,QLD-SE,SAMPLE
+Admin,Office / bookkeeping wages,26000,annual,2026-07-15,QLD-SE,SAMPLE
+Software,Looplet + accounting + design subscriptions,3600,annual,2026-07-15,QLD-SE,SAMPLE
+Professional,Accounting + legal + registration/licensing,4200,annual,2026-07-15,QLD-SE,SAMPLE
+Comms,Phone + internet,2400,annual,2026-07-15,QLD-SE,SAMPLE
+Marketing,Website + ads + signage,5000,annual,2026-07-15,QLD-SE,SAMPLE
+
+config,value,notes,,,,
+productive_days_per_year,220,working days after weekends/leave/wet days - converts annual total to a daily rate,,,,
+recovery_method,per_day,per_day | per_labour_hour | percent_on_cost,,,,
+# daily_overhead = SUM(annual amounts) / productive_days_per_year,,,,,,
+# job_overhead = daily_overhead x job_duration_days (duration = labour_hours / crew / hours_per_day),,,,,,
+# NOTE: labour on-costs (super, workers comp, leave, payroll tax) are NOT here -,,,,,,
+#       they burden the LABOUR RATE in labour-norms (they sit ON labour, not beside it).,,,,,,
