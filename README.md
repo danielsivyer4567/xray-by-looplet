@@ -9,7 +9,7 @@ LLM formatter, Excel). **An LLM never produces a quantity, price, or compliance
 verdict** — every number comes from deterministic grammar + geometry + rule
 packs, and carries the formula and evidence that prove it.
 
-Status: **v0.1.0** · two trade packs (steel sheds, electrical) · **103 tests
+Status: **v0.1.0** · two trade packs (steel sheds, electrical) · **117 tests
 passing** · extraction is permissively licensed (pypdfium2 + pikepdf).
 
 ---
@@ -67,6 +67,14 @@ Tools: `run_takeoff(pdf_path)`, `quote_draft(pdf_path)` (Looplet-ready lines),
 surfaced in `review`). Near-misses are **flagged with their delta, never
 dropped**.
 
+**Coverage (confidence report):** each page carries `coverage`
+(`words`, `entities`, `tableCells`, `structuredRatio`) and the document a
+`coverage` summary (`overallRatio`, `lowPages`) — how much of the readable
+text became structured output, and which text-heavy pages fell below the bar.
+It's a **diagnostic, not a gate** ("read 94%, here's the 6% I couldn't"): it
+never drops a quantity or changes a tier. The `quote_draft` surfaces it too as
+`summary.coverage_ratio` + `summary.low_coverage_pages`.
+
 ## Trade packs
 
 Quantify runs through a pluggable **pack registry** (`src/xray/packs.py`), so a
@@ -92,7 +100,7 @@ Two points in PDF coordinates + the real distance → exact mm-per-point.
 ## Testing
 
 ```
-set PYTHONPATH=src && python -m pytest tests -q      # expect: 103 passed
+set PYTHONPATH=src && python -m pytest tests -q      # expect: 117 passed
 ```
 The two real plan sets under `fixtures/` are the permanent acceptance suite; the
 ground truths in `tests/` were proven by hand.
