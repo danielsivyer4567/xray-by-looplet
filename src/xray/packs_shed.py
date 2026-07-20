@@ -10,6 +10,7 @@ import re
 
 from xray.chains import Check, trig_check
 from xray.quantify import shed_pack
+from xray.hardening import harden
 from xray.packs import Pack, register
 
 RE_FRAME_LABEL = re.compile(r"PORTAL\s+RAFTER", re.I)
@@ -57,6 +58,10 @@ class ShedPack(Pack):
             extra.append(tc)
         extra.extend(_count_checks(spec, ctx.entities))
         quants = shed_pack(spec, ctx.entities, list(ctx.checks) + extra)
+        spec_ent = next((e for e in ctx.entities
+                         if getattr(e, "type", None) == "SPEC"), None)
+        base_ev = [spec_ent.id] if spec_ent is not None else []
+        quants = harden(quants, spec, base_evidence=base_ev)
         return quants, extra
 
 

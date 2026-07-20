@@ -38,8 +38,8 @@ def test_takeoff_shed_returns_quote_lines():
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["engine"]["name"] == "xray-by-looplet"
-    assert body["summary"]["lines"] == 8
-    assert len(body["quote_lines"]) == 8
+    assert body["summary"]["lines"] == 13  # 8 core + 5 hardening accessories
+    assert len(body["quote_lines"]) == 13
     frames = [ln for ln in body["quote_lines"]
               if ln["source_quantity_id"] == "qty-frames"]
     assert frames and frames[0]["quantity"] == 5.0

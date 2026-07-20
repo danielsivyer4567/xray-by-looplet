@@ -31,8 +31,10 @@ def shed_draft():
 
 
 def test_shed_line_count(shed_draft):
-    assert shed_draft["summary"]["lines"] == 8
-    assert len(shed_draft["quote_lines"]) == 8
+    # 8 core quantities + 5 hardening accessories (ridge, barge, gutter,
+    # downpipes, screws) = 13
+    assert shed_draft["summary"]["lines"] == 13
+    assert len(shed_draft["quote_lines"]) == 13
 
 
 def test_every_line_has_a_basis_and_valid_enums(shed_draft):

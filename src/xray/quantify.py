@@ -30,6 +30,9 @@ class Quantity:
     tier: str            # reconciled|single-source|needs-human
     evidence: list[str] = field(default_factory=list)
     notes: str = ""
+    order_qty: float | None = None       # orderable amount after allowances (None => use qty)
+    allowances: list = field(default_factory=list)   # [{name, factor, source}]
+    purchase: list = field(default_factory=list)     # [{stock_length_m, count, offcut_m, ...}]
 
 
 def _r1(v: float) -> float:
