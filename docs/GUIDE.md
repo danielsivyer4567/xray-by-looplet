@@ -2,13 +2,13 @@
 
 **Sees through plans. PDF in, quantities out.**
 
-Version 0.1.0 · engine id `xray-by-looplet` · Python 3.11 · 75/75 tests passing
+Version 0.1.0 · engine id `xray-by-looplet` · Python 3.11 · 117/117 tests passing
 
 X-Ray by Looplet is a **headless** construction-plan takeoff engine. Feed it a
 plan PDF; it returns a structured `takeoff.json` (typed entities, verification
 checks, quantities with evidence chains) and a `marked.pdf` (the same drawing
-with results injected as Bluebeam-Revu-compatible annotations, plus the full
-JSON embedded as an attachment so the file is self-contained).
+with results injected as standard ISO 32000 PDF markup annotations, plus the
+full JSON embedded as an attachment so the file is self-contained).
 
 There is deliberately **no UI**. Presentation is delegated (Looplet CRM, an LLM
 formatter, Excel). **An LLM never produces a quantity** — quantities come only
@@ -62,18 +62,20 @@ point: builders' plans are commercially sensitive and never leave the machine).
 
 | Package | Pinned (`requirements.txt`) | Verified build | Role |
 |---|---|---|---|
-| `pymupdf` | `>=1.24` | 1.28.0 (MuPDF 1.29.0) | Text words, vector segments, page classification, rendering |
-| `pikepdf` | `>=9` | 10.10.0 (qpdf) | Annotation injection, `/Measure` dicts, embedded `takeoff.json` |
+| `pypdfium2` | `>=4` | 4.x (PDFium) | Text char boxes, image objects, page classification, rendering — permissive (Apache/BSD) licence |
+| `pikepdf` | `>=9` | 10.x (qpdf) | Annotation injection, `/Measure` dicts, embedded `takeoff.json` |
 | `jsonschema` | `>=4` | 4.26.0 | Enforces the output contract at test time |
 | `pytest` | `>=8` | 8.x | Test runner; the two real fixtures are the regression suite |
 
 **Runtime:** Python 3.11 (uses `X | None` unions, dataclasses). No compiled
-extensions of our own; both PDF libraries ship wheels.
+extensions of our own; both PDF libraries ship wheels, and both are
+permissively licensed (no AGPL).
 
 **Deliberate non-dependencies:** cloud OCR (Azure / Google Document AI) — local
 only removes a per-page cost; ML for quantities — the trust engine is arithmetic
-reconciliation, not black-box scores; Bluebeam SDK/API — file-level Revu
-compatibility is the stronger, dependency-free position.
+reconciliation, not black-box scores; any third-party markup SDK — writing
+plain ISO 32000 annotation keys directly is the stronger, dependency-free
+position and opens in any standards-compliant PDF viewer.
 
 ---
 
@@ -153,7 +155,7 @@ PDF -> 1 extract -> 2 reassemble -> 3 grammar -> 4 scale
 | 4 | scale | `scale.py` | Vote a per-page scale -> mm-per-point |
 | 5 | checks | `chains.py` | Chain sums, trig, label counts, cross-sheet; mask phone/postcode/copyright false positives |
 | 6 | quantify | `quantify.py` | Rule packs -> quantities with formula, tier, evidence |
-| 7 | write | `revu_writer.py` | Standard PDF annotations (`/NM`,`/Subj`,`/T`,`/Measure`) + embed the JSON |
+| 7 | write | `markup_writer.py` | Standard ISO 32000 PDF markup annotations (`/NM`,`/Subj`,`/T`,`/Measure`) + embed the JSON |
 
 A rendered mind map of the whole system lives at `docs/mindmap.mermaid` (and in
 the HTML documentation reference).
@@ -183,8 +185,8 @@ Renaming the engine never changes this shape, only `engine.name`.
 
 The marked PDF: each annotation carries `/NM` (UUID), `/Subj`, `/T` =
 "X-Ray by Looplet", `/Contents`, dates, and — for measurements — a standard
-ISO-32000 `/Measure` dict so Revu/Acrobat render scaled values. The full JSON is
-embedded as an attachment named `takeoff.json`.
+ISO-32000 `/Measure` dict so any standards-compliant PDF viewer renders scaled
+values. The full JSON is embedded as an attachment named `takeoff.json`.
 
 ---
 
@@ -210,11 +212,13 @@ to 16,467 against a stated 16,465 becomes a `flag` with `delta +2`.
 |---|---|---|
 | `reassemble.py` | 252 | `extract_words(doc, page_no)`, `reassemble(words)` |
 | `grammar.py` | 338 | `classify(words, page_rect)`, `parse_spec_token(text)`, `normalize_tag(text)` |
-| `scale.py` | 132 | `vote_scale(entities, page_rect, declared)` |
+| `scale.py` | 132 | `vote_scale(entities, page_rect, declared, calibration=None)`, `calibrate(p0, p1, known_mm)` |
 | `chains.py` | 322 | `find_chain_checks(entities, page_rect)`, `trig_check(spec, entities)`, `titleblock_mask(page_rect)` |
+| `tables.py` | 181 | `extract_tables(words, page_rect)` -> schedule rows |
 | `quantify.py` | 186 | `shed_pack(spec, entities, checks)` |
-| `revu_writer.py` | 224 | `write_marked_pdf(src, out, result)` |
-| `engine.py` | 158 | `run(pdf_path) -> dict` |
+| `packs*.py` | — | pack registry + shed / electrical packs; `hardening.py` (wastage, laps, accessories) |
+| `markup_writer.py` | 225 | `write_marked_pdf(src, out, result)` |
+| `engine.py` | 178 | `run(pdf_path, calibrations=None) -> dict` |
 | `cli.py` | 79 | `main(argv)` |
 
 ---
@@ -282,7 +286,7 @@ Engineered around from a verified dossier, baked in as engineering constraints.
 
 **Next modules:** PaddleOCR (local, ONNX) for scanned sheets; OpenCV for
 deskew/leader/table detection; AS/NZS static data packs (JSON) for steel mass;
-pymkup reference for reading Revu-authored PDFs; openpyxl/CSV export.
+importer for reading existing marked-up PDFs; openpyxl/CSV export.
 
 **Integration:** a thin FastAPI wrapper or worker-invoked CLI — a Looplet job
 gets a plan PDF, the worker runs X-Ray, JSON lands in Postgres, quantities appear
@@ -290,5 +294,5 @@ as draft quote lines with evidence crops. Slots into the existing Supabase worke
 pattern.
 
 **Later — the viewer:** deliberately undecided (Electron + React vs PDFium wasm).
-Engine-first means the viewer choice never blocks anything; the Revu-compatible
-writer is already the file layer either way.
+Engine-first means the viewer choice never blocks anything; the standards-based
+markup writer is already the file layer either way.

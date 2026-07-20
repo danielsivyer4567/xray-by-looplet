@@ -109,7 +109,7 @@ ground truths in `tests/` were proven by hand.
 
 ```
 src/xray/        engine (extract, reassemble, grammar, scale, tables, chains,
-                 quantify, packs*, revu_writer, engine, cli)
+                 quantify, packs*, markup_writer, engine, cli)
 server/          FastAPI worker + MCP server + quote-line mapping
 schema/          takeoff.schema.json — the output contract
 fixtures/        real plan sets (shed, warehouse) + electrical schedule

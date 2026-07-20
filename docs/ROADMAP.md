@@ -331,10 +331,12 @@ tradie or real project demands first are starred.**
 **Accuracy safeguards** (no auto-takeoff is 100%; these keep it trustworthy)
 - *Scale calibration UX* — when scale can't be auto-voted, the user clicks a
   known dimension to set it. Wrong scale = everything wrong. Non-negotiable.
-- *Manual measure + override tools in PDX* (Bluebeam parity) — length/area/count
-  tools, add/edit/delete a quantity, fix a miscount. Pros demand a manual
-  fallback; it's auto **and** manual, never auto-only.
-- Coverage/confidence report — "read 95% of this sheet; here's the 5% I couldn't."
+- *Manual measure + override tools in PDX* — length/area/count tools,
+  add/edit/delete a quantity, fix a miscount. Pros demand a manual fallback;
+  it's auto **and** manual, never auto-only.
+- ~~Coverage/confidence report~~ **DONE (v0.1)** — per-page `structuredRatio`
+  + document `coverage` (overallRatio, lowPages): "read 95% of this sheet;
+  here's the 5% I couldn't." Surfaced in the quote draft too.
 - Human-in-the-loop resolution — needs-human items get a real
   review -> confirm/edit -> re-derive workflow; corrections stick.
 

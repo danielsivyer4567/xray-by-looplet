@@ -12,7 +12,7 @@ from pathlib import Path
 
 from xray import ENGINE_NAME, __version__
 from xray import engine
-from xray.revu_writer import write_marked_pdf
+from xray.markup_writer import write_marked_pdf
 
 
 def _build_parser() -> argparse.ArgumentParser:

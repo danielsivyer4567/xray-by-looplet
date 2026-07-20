@@ -6,7 +6,7 @@ mindmap
       No UI — presentation delegated
       LLM never makes a number
     Pipeline
-      1 Extract · PyMuPDF
+      1 Extract · pypdfium2
       2 Reassemble glyph-split runs
       3 Grammar to typed entities
       4 Scale voting per page
@@ -25,11 +25,11 @@ mindmap
       needs-human
     Outputs
       takeoff.json / schema
-      marked.pdf / Revu-compatible
+      marked.pdf / ISO 32000 markup
       embedded attachment
     Stack
       Python 3.11
-      PyMuPDF / MuPDF
+      pypdfium2 / PDFium
       pikepdf / qpdf
       pytest + jsonschema
     Guardrails

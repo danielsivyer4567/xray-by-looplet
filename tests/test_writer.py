@@ -1,8 +1,8 @@
-"""Tests for src/xray/revu_writer.py — standalone (no other engine modules).
+"""Tests for src/xray/markup_writer.py — standalone (no other engine modules).
 
 Synthesizes a minimal result dict (no grammar/chains/quantify imports), runs
 write_marked_pdf against fixtures/shed-manners-aline.pdf, then verifies the
-output with pikepdf AND PyMuPDF.
+output with pikepdf AND pypdfium2.
 
 Run:  python -m pytest tests/test_writer.py -x -q   (cwd = repo root)
 """
@@ -18,7 +18,7 @@ import pytest
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))  # standalone: no PYTHONPATH needed
 
-from xray.revu_writer import write_marked_pdf  # noqa: E402
+from xray.markup_writer import write_marked_pdf  # noqa: E402
 
 FIXTURE = REPO / "fixtures" / "shed-manners-aline.pdf"
 MM_PER_PT_1_100 = 25.4 / 72.0 * 100.0  # 1:100 -> 35.2778 mm of world per pt

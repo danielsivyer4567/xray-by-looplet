@@ -9,8 +9,8 @@ APIs or the schema without updating this file.
 A **headless** construction-plan takeoff engine. Input: a plan PDF. Output:
 1. `takeoff.json` — structured entities, verification checks, quantities with
    evidence chains (conforms to `schema/takeoff.schema.json`)
-2. `<name>.marked.pdf` — the same PDF with results injected as **standard PDF
-   annotations** plus Bluebeam-Revu-compatible keys, so Revu/Acrobat render them.
+2. `<name>.marked.pdf` — the same PDF with results injected as **standard ISO
+   32000 PDF markup annotations**, so any standards-compliant viewer renders them.
 
 There is deliberately NO UI. Presentation is delegated (Looplet CRM, an LLM
 formatter, Excel). **An LLM never produces a quantity** — quantities come only
@@ -19,13 +19,13 @@ from deterministic grammar + geometry + rules.
 ## Pipeline
 
 ```
-1 extract   PDF text words + vector segments (PyMuPDF; lossless on vector PDFs)
+1 extract   PDF text char boxes + image objects (pypdfium2; lossless on vector PDFs)
 2 reassemble glyph-split text runs -> whole tokens        [src/xray/reassemble.py]
 3 grammar   tokens -> typed entities                      [src/xray/grammar.py]
 4 scale     per-page scale voting                         [src/xray/scale.py]
 5 checks    chain sums, trig, cross-sheet reconciliation  [src/xray/chains.py]
 6 quantify  rule packs -> quantities w/ evidence          [src/xray/quantify.py]
-7 write     takeoff.json + marked.pdf                     [src/xray/revu_writer.py]
+7 write     takeoff.json + marked.pdf                     [src/xray/markup_writer.py]
    orchestrated by                                        [src/xray/engine.py]
    CLI                                                    [src/xray/cli.py]
 ```
@@ -79,18 +79,19 @@ from deterministic grammar + geometry + rules.
 - roof sheeting m2 = 2 * 16.0 * 4.5696 = 146.2
 - openings from schedule as counted items.
 
-## Bluebeam-compat keys (verified via pymkup + pypdf#2270 + vendor docs)
+## Standard PDF markup keys (ISO 32000)
 
-Write on each generated annotation:
+Write on each generated annotation, using only standard ISO 32000 keys:
 - `/NM` unique UUID string, `/Subj` (e.g. "Length Measurement"), `/T` author
   ("X-Ray by Looplet"), `/Contents` human summary, `/CreationDate`, `/M`.
 - Measurements: standard `/Measure` dict (ISO 32000 RL type) + `/IT` intent
-  (`LineDimension`, `PolygonDimension`, `PolygonCount`) so Revu/Acrobat show
-  scaled values. OPTIONAL (phase 2): `/MeasurementTypes` int (observed values:
-  128 Count, 129 Area, 130 Length, 132 Volume, 384 Diameter, 1152 Angle — treat
-  as observed subset, bitflag-like; do NOT hardcode as closed enum).
-- Do NOT attempt `/BSISpaces` or `/BSIColumnData` writing yet (no Revu ground
-  truth file to validate against).
+  (`LineDimension`, `PolygonDimension`, `PolygonCount`) so any standards-compliant
+  viewer shows scaled values. OPTIONAL (phase 2): `/MeasurementTypes` int
+  (observed values: 128 Count, 129 Area, 130 Length, 132 Volume, 384 Diameter,
+  1152 Angle — treat as observed subset, bitflag-like; do NOT hardcode as a
+  closed enum).
+- Do NOT write any vendor-proprietary annotation keys — standard keys only, so
+  the output stays portable across viewers.
 - Also attach `takeoff.json` as a PDF embedded file (EmbeddedFiles name tree)
   so the document is self-contained.
 
@@ -143,12 +144,13 @@ class Quantity:
     evidence: list[str]; notes: str
 def shed_pack(spec: dict, entities: list[Entity], checks: list[Check]) -> list[Quantity]
 
-# revu_writer.py
+# markup_writer.py
 def write_marked_pdf(src: str, out: str, result: dict) -> None
 # annotate page 1 region of each check/quantity evidence bbox; embed takeoff.json
 
 # engine.py
-def run(pdf_path: str) -> dict   # full result conforming to schema/takeoff.schema.json
+def run(pdf_path: str, calibrations: dict | None = None) -> dict
+# full result conforming to schema/takeoff.schema.json
 # cli.py:  python -m xray run <pdf> [--out DIR]  -> writes takeoff.json + marked.pdf
 ```
 

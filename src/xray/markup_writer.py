@@ -1,22 +1,22 @@
-"""revu_writer.py — pipeline step 7: inject takeoff results into the PDF.
+"""markup_writer.py — pipeline step 7: inject takeoff results into the PDF.
 
 Writes ``<name>.marked.pdf``: for every quantity and every check in the result
 dict that carries evidence (entity ids resolvable to bboxes), a standard PDF
-Square/Polygon annotation is added on the evidence entity's page, with the
-Bluebeam-Revu-compatible keys documented in CONTEXT.md (/NM, /Subj, /T,
-/Contents, /CreationDate, /M, /C, /F). Quantities with unit ``lm``/``m2`` also
-get a standard ISO 32000 rectilinear ``/Measure`` dictionary (built from the
-page's ``mmPerPt`` scale, when the result carries one) and ``/IT
-/PolygonDimension`` so Revu/Acrobat display scaled values.
+Square/Polygon markup annotation is added on the evidence entity's page, using
+only ISO 32000 standard annotation keys (/NM, /Subj, /T, /Contents,
+/CreationDate, /M, /C, /F). Quantities with unit ``lm``/``m2`` also get a
+standard ISO 32000 rectilinear ``/Measure`` dictionary (built from the page's
+``mmPerPt`` scale, when the result carries one) and ``/IT /PolygonDimension``,
+so any standards-compliant PDF viewer displays the scaled measurement.
 
 The full result JSON is embedded as ``takeoff.json`` in the output PDF's
 EmbeddedFiles name tree, making the marked document self-contained.
 
 Conventions:
   * entity/check ``page`` numbers and ``document.pages[].n`` are 1-based
-    (PyMuPDF's 0-based index is an internal detail of the extract stage).
-  * entity bboxes are PyMuPDF points with a TOP-LEFT origin; PDF annotation
-    rects need a bottom-left origin, so ``pdf_y = page_height - y``.
+    (the extractor's 0-based page index is an internal detail).
+  * entity bboxes use points with a TOP-LEFT origin; PDF annotation rects
+    need a bottom-left origin, so ``pdf_y = page_height - y``.
   * No appearance streams are generated (v0.1): viewers regenerate them or
     render Square/Polygon border-only, which is acceptable.
   * The source PDF is never modified — output goes to ``out`` only.

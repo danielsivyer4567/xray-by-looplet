@@ -20,7 +20,7 @@ if str(_SRC) not in sys.path:
 from mcp.server.fastmcp import FastMCP
 
 from xray import ENGINE_NAME, __version__, engine
-from xray.revu_writer import write_marked_pdf
+from xray.markup_writer import write_marked_pdf
 
 from server.quote_lines import build_quote_draft
 

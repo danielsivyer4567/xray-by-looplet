@@ -1,7 +1,7 @@
 # X-Ray by Looplet — Integration Handover Note
 
 **For:** whoever wires X-Ray into the extensions / Looplet stack.
-**Status at handover:** v0.1.0 · 75/75 tests passing · both real-plan fixtures
+**Status at handover:** v0.1.0 · 117/117 tests passing · both real-plan fixtures
 run clean · `pip check` clean. Verified 2026-07-20.
 
 ---
@@ -12,7 +12,7 @@ A **headless** takeoff engine. It is a pure pipe:
 
 ```
 plan.pdf  ->  xray  ->  <plan>.xray.json   (the contract: entities, checks, quantities+evidence)
-                        <plan>.marked.pdf  (annotated, Bluebeam-Revu-compatible, JSON embedded)
+                        <plan>.marked.pdf  (annotated with standard ISO 32000 PDF markup, JSON embedded)
 ```
 
 There is no UI and no server in the box — that is deliberate. The extension is
