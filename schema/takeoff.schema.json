@@ -89,7 +89,7 @@
           "trade": { "type": "string" },
           "item": { "type": "string" },
           "qty": { "type": "number" },
-          "unit": { "enum": ["ea", "lm", "m2", "m3", "kg", "t"] },
+          "unit": { "enum": ["ea", "lm", "m2", "m3", "kg", "t", "VA", "kVA", "A", "kW"] },
           "formula": { "type": "string" },
           "tier": { "enum": ["reconciled", "single-source", "needs-human"] },
           "evidence": { "type": "array", "items": { "type": "string" } },

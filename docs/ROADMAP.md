@@ -271,3 +271,40 @@ tested; duration derived from labour hours.
 - **Licence decision: DEFERRED** — see `docs/LICENCE-TODO.md`. Revisit before
   commercial distribution. pypdfium2 confirmed **$0 licence** (permissive); the
   swap's only cost is engineering, and it's contained to one module.
+
+## 11. Pre-pitch hardening — the four credibility items (2026-07-20)
+
+Turns a *quantity* into a *buildable, orderable* number — the gap a seasoned
+tradie probes first. Positioned EARLY (before external pitches). All four obey
+the standing laws: dated/configurable inputs, provenance stamps, needs-human on
+any assumption, engine does the arithmetic.
+
+H1. **Wastage / allowances.** Per-material, user-configurable waste factor.
+Emit `order_qty = base_qty x (1 + waste%)` alongside the base, stamped with the
+factor + source. e.g. roof 146.2 m2 x 1.10 = 160.8 m2 ordered. Data: a dated
+wastage table per material/region (editable defaults).
+*Gate:* shed roof/cladding show base + ordered with the factor cited.
+
+H2. **Laps & joints.** Sheet materials carry end/side laps the plan area misses.
+Compute from product coverage width + lap dims: ordered area / sheet count
+reflects laps. Rule inside the roofing/cladding pack.
+*Gate:* roof sheeting reflects laps, not raw plan area.
+
+H3. **Purchase-unit rounding.** Raw metres/counts -> purchasable units: steel ->
+stock lengths (6/9/12 m) with offcut, cable -> drum sizes, sheets -> standard
+lengths. Deterministic given a stock-length/pack-size data table; adds a
+`purchase` breakdown to the quantity.
+*Gate:* 87.7 lm steel -> stock-length pick + offcut shown.
+
+H4. **Accessories & consumables.** Per-assembly rules -> ridge/barge capping
+(lm), gutter, downpipes, flashings, screws (per m2), sealant. Same
+computed-from-structure + cite-the-rule approach as fasteners; an accessories
+rules library per trade.
+*Gate:* shed roof emits capping/gutter/screws, each evidenced to a rule.
+
+**Schema:** Quantity gains optional `order_qty`, `waste_factor`, `purchase[]`;
+accessories are first-class Quantity rows tagged derived/accessory.
+**Inputs:** one good estimator's wastage %, lap dims, stock/pack sizes, accessory
+rules — the "bring a tradie in first" step. Editable defaults ship so it demos
+before that. **Positioning line:** *"evidence-backed measuring that shows its
+working and flags what needs your judgement"* — never "replaces the estimator".

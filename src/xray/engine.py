@@ -17,11 +17,14 @@ import pypdfium2 as pdfium
 import pypdfium2.raw as pdfium_c
 
 from xray import ENGINE_NAME, __version__
-from xray.chains import Check, find_chain_checks, trig_check
+from xray.chains import Check, find_chain_checks
 from xray.grammar import classify
-from xray.quantify import shed_pack
 from xray.reassemble import extract_words, reassemble
 from xray.scale import vote_scale
+from xray.tables import extract_tables
+from xray.packs import PackContext, run_packs
+import xray.packs_shed  # noqa: F401  (registers ShedPack)
+import xray.packs_electrical  # noqa: F401  (registers ElectricalPack)
 
 # a page whose largest placed image covers >= this fraction of the page area
 # is a scanned sheet (raster), regardless of any invisible OCR text layer
@@ -77,37 +80,6 @@ def _page_kind(page, n_words: int) -> str:
     return "vector" if n_words >= SPARSE_WORD_COUNT else "sparse"
 
 
-def _find_spec(entities) -> dict | None:
-    for e in entities:
-        if e.type == "SPEC" and isinstance(e.value, dict):
-            return e.value
-    return None
-
-
-RE_FRAME_LABEL = re.compile(r"PORTAL\s+RAFTER", re.I)
-
-
-def _count_checks(spec: dict, entities) -> list[Check]:
-    """Label-count evidence: 'PORTAL RAFTER' should appear frames = bays+1
-    times (each frame is labelled once on the plan)."""
-    frames = int(spec["bays"]) + 1
-    hits = [e for e in entities
-            if e.type == "LABEL" and RE_FRAME_LABEL.search(str(e.raw))]
-    if not hits:
-        return []
-    n = len(hits)
-    status = "pass" if n == frames else "flag"
-    return [Check(
-        id=f"chk-count-portal-rafter-p{hits[0].page}",
-        kind="count",
-        status=status,
-        detail=(f"'PORTAL RAFTER' label appears {n}x; "
-                f"expected frames = bays + 1 = {frames}"),
-        delta=float(n - frames),
-        evidence=[e.id for e in hits],
-    )]
-
-
 def run(pdf_path: str) -> dict:
     """Full pipeline. Returns a TakeoffResult dict (see schema)."""
     p = Path(pdf_path)
@@ -116,6 +88,7 @@ def run(pdf_path: str) -> dict:
         pages_meta = []
         all_entities = []
         all_checks: list[Check] = []
+        all_tables = []
         for i in range(len(doc)):
             page = doc[i]
             raw = extract_words(doc, i)
@@ -127,6 +100,7 @@ def run(pdf_path: str) -> dict:
             checks = find_chain_checks(entities, rect)
             all_entities.extend(entities)
             all_checks.extend(checks)
+            all_tables.extend(extract_tables(words, rect))
             pages_meta.append({
                 "n": i + 1,
                 "widthPt": float(w),
@@ -141,14 +115,10 @@ def run(pdf_path: str) -> dict:
     finally:
         doc.close()
 
-    spec = _find_spec(all_entities)
-    quantities = []
-    if spec:
-        tc = trig_check(spec, all_entities)
-        if tc is not None:
-            all_checks.append(tc)
-        all_checks.extend(_count_checks(spec, all_entities))
-        quantities = shed_pack(spec, all_entities, all_checks)
+    ctx = PackContext(entities=all_entities, checks=all_checks,
+                      tables=all_tables, pages=pages_meta)
+    quantities, pack_checks = run_packs(ctx)
+    all_checks.extend(pack_checks)
 
     review = []
     for q in quantities:
