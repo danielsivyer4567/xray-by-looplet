@@ -41,8 +41,15 @@ def _summary(result: dict) -> str:
         f"({len(result['document']['pages'])} pages)",
         f"entities : {len(result['entities'])}",
         f"checks   : {n_pass} pass, {n_flag} flag",
-        f"quantities ({len(quants)}):",
     ]
+    cov = result.get("document", {}).get("coverage")
+    if cov:
+        low = cov.get("lowPages") or []
+        low_txt = f"; low pages: {', '.join(map(str, low))}" if low else ""
+        lines.append(
+            f"coverage : {cov.get('overallRatio', 0) * 100:.0f}% of readable "
+            f"text structured{low_txt}")
+    lines.append(f"quantities ({len(quants)}):")
     for q in quants:
         lines.append(f"  [{q['tier']:>13}] {q['item']:<28} "
                      f"{q['qty']:>8g} {q['unit']:<3} = {q['formula']}")
