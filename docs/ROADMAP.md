@@ -308,3 +308,70 @@ accessories are first-class Quantity rows tagged derived/accessory.
 rules — the "bring a tradie in first" step. Editable defaults ship so it demos
 before that. **Positioning line:** *"evidence-backed measuring that shows its
 working and flags what needs your judgement"* — never "replaces the estimator".
+
+## 12. CAD input adapter (2026-07-20)
+
+A second front door to the extraction stage: read native CAD as input, not just
+PDF. Most "CAD drawings" arrive as CAD-plotted PDFs (already covered) — this is
+for the raw files a tradie may hand over.
+
+- **DXF**: read directly with ezdxf (already a dep, used for export). Map
+  LINE / LWPOLYLINE / TEXT / MTEXT / DIMENSION / INSERT (blocks + attributes)
+  into the same Word/Entity model the PDF path produces. Structured vector, so
+  NO glyph-split reconstruction; layers hand us free semantics.
+- **DWG**: convert to DXF first (ODA File Converter, free), then the DXF path.
+- Everything downstream (tables, packs, quantities, marks/UUIDs) is unchanged.
+*Gate:* a DXF of the shed reconstructs the same entities/quantities as its PDF.
+
+## 13. What else we'll need — product-completeness sweep (2026-07-20)
+
+Honest gaps beyond the trade engine, grouped by why they bite. **The ones a real
+tradie or real project demands first are starred.**
+
+**Accuracy safeguards** (no auto-takeoff is 100%; these keep it trustworthy)
+- *Scale calibration UX* — when scale can't be auto-voted, the user clicks a
+  known dimension to set it. Wrong scale = everything wrong. Non-negotiable.
+- *Manual measure + override tools in PDX* (Bluebeam parity) — length/area/count
+  tools, add/edit/delete a quantity, fix a miscount. Pros demand a manual
+  fallback; it's auto **and** manual, never auto-only.
+- Coverage/confidence report — "read 95% of this sheet; here's the 5% I couldn't."
+- Human-in-the-loop resolution — needs-human items get a real
+  review -> confirm/edit -> re-derive workflow; corrections stick.
+
+**Estimator's mental model** (how they actually price)
+- *Assemblies / recipes* — a builder defines "external wall W1 = frame + sheet +
+  insulation + paint + fixings per m2"; a measured quantity expands to that
+  material+labour bundle. This is how estimating really works — arguably the
+  biggest value-add after the takeoff itself.
+- Builder profile/memory — preferred products, default wastage, markups, labour
+  rates, remembered per builder.
+
+**Project reality** (real jobs are messy and multi-document)
+- *Multi-document project assembly + cross-sheet dedup* — a job is many sheets
+  and files; do NOT double-count a door shown on three sheets. Dedupe by
+  mark/UUID.
+- *Revision handling* — plans revise (Rev A/B/C). Detect, re-takeoff, and DIFF
+  what changed between revisions. Huge for variations and claims.
+
+**Evidence & disputes**
+- Evidence/audit export ("show your working") — per-quantity derivation + source
+  crops as a shareable pack. A selling point and a dispute-settler.
+- Variations — as-quoted vs as-built/revised comparison -> variation claims.
+
+**Business plumbing** (it lives inside Looplet)
+- Quote versioning + history; GST/tax; user roles + approvals; price history.
+
+**Robustness & ops**
+- Graceful bad-input handling — corrupt / password / huge / non-plan PDFs give
+  clear errors, never a crash or a silently-wrong number.
+- Performance at scale (200-sheet sets); telemetry to surface documents the
+  engine handles poorly (so packs improve); local-first data handling (plans are
+  commercially sensitive — already a selling point).
+
+**Reference data layer**
+- Maintained, versioned AS/NZS section/sizing tables per trade (steel mass,
+  pipe/duct/cable sizing) as a shared service every pack draws on.
+
+**Do-first before serious pitches:** scale calibration, manual measure/override,
+assemblies, cross-sheet dedup, revision handling — alongside the section-11
+hardening items.
