@@ -196,3 +196,29 @@ the library, so the swap is contained.
 
 **Still on fitz (dev-only, NOT shipped, NOT in requirements):** the DXF export
 tool + `tools/extract_entities.py` / `tools/probe_layers.py`. Migrate in P8.
+
+## v0.1 additions after initial build (2026-07-20)
+
+- **Pluggable pack registry** (`packs.py`): `Pack.detect/quantify`, `register`,
+  `run_packs(PackContext)`. engine.run dispatches quantify through it; ShedPack
+  (`packs_shed.py`) reproduces the original behaviour exactly. Packs may declare
+  extra units via `register_units` (electrical uses VA). Adding a trade never
+  touches engine.run.
+- **Table extraction** (`tables.py`): words -> rows (baseline) + columns
+  (recurring left-edges) -> Table with headers + `as_dicts()`; drops preamble,
+  splits multiple tables by vertical gaps. The bridge from a schedule *drawing*
+  to CSV-shaped rows.
+- **Electrical pack** (`packs_electrical.py`): consumes tables -> reconciled BOM
+  (breakers by rating/poles, cable by size [needs-human: metres need run
+  lengths], boards, total connected/demand VA) + reconciliation and
+  phase-balance checks. Proven end-to-end from `fixtures/electrical-schedule.pdf`.
+- **Scale calibration** (`scale.py`): `calibrate(p0,p1,known_mm)` + a
+  `calibration` arg to `vote_scale` that wins outright; new `verified` flag is
+  False when the winner rests only on the paper-size prior (PDX's prompt signal).
+  `engine.run(pdf, calibrations={page: {...}})` threads per-page overrides.
+- **MCP server** (`server/mcp_server.py`): FastMCP exposing run_takeoff,
+  quote_draft, run_takeoff_calibrated, marked_pdf, engine_info — the Looplet
+  integration surface. HTTP worker (`server/app.py`) + quote-line mapping
+  (`server/quote_lines.py`) unchanged.
+- Schema: quantity `unit` enum extended (VA/kVA/A/kW); page `scale` gains
+  optional `verified`.

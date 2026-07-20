@@ -2,48 +2,119 @@
 
 **Sees through plans. PDF in, quantities out.**
 
-A headless construction-plan takeoff engine. Feed it a plan PDF; it returns:
+A headless construction-plan takeoff engine. Feed it a plan PDF; it returns
+structured quantities with evidence and trust tiers, and a marked-up PDF. There
+is deliberately no UI — presentation is delegated (Looplet, the PDX viewer, an
+LLM formatter, Excel). **An LLM never produces a quantity, price, or compliance
+verdict** — every number comes from deterministic grammar + geometry + rule
+packs, and carries the formula and evidence that prove it.
 
-1. `<plan>.xray.json` — typed entities, verification checks, and quantities
-   with evidence chains and confidence tiers
-   (contract: `schema/takeoff.schema.json`)
-2. `<plan>.marked.pdf` — the same PDF with results injected as standard,
-   Bluebeam-Revu-compatible annotations, plus the full JSON embedded as an
-   attachment so the document is self-contained.
+Status: **v0.1.0** · two trade packs (steel sheds, electrical) · **103 tests
+passing** · extraction is permissively licensed (pypdfium2 + pikepdf).
 
-There is deliberately no UI. Presentation is delegated (Looplet CRM, an LLM
-formatter, Excel). **An LLM never produces a quantity** — quantities come only
-from deterministic grammar + geometry + rules, and every number carries the
-formula and the entity IDs that prove it.
+---
 
-## Usage
+## Install
 
 ```
-pip install -r requirements.txt
-set PYTHONPATH=src        # or: export PYTHONPATH=src
-python -m xray run fixtures/shed-manners-aline.pdf [--out DIR]
+python -m pip install -r requirements.txt          # engine
+python -m pip install -r server/requirements.txt   # + HTTP worker and MCP server
 ```
 
-## Trust model
+Runtime deps: Python 3.11, `pypdfium2`, `pikepdf`, `jsonschema`.
 
-Every quantity is tiered: `reconciled` (independent evidence agrees),
-`single-source`, or `needs-human` (an assumption was required — e.g. an
-open bay affecting cladding). Chain sums, trigonometry, and label counts
-are cross-checked; near-misses are FLAGGED with their delta, never dropped.
-
-## Development
+## Quick start (CLI)
 
 ```
-python -m pytest tests -q
+set PYTHONPATH=src            # Windows cmd;  $env:PYTHONPATH="src" (pwsh);  export PYTHONPATH=src (bash)
+python -m xray run fixtures\shed-manners-aline.pdf --out out
 ```
 
-The two PDFs under `fixtures/` are real plan sets and the permanent
-acceptance suite; the ground truths encoded in `tests/` were proven by hand.
-See `CONTEXT.md` for the full design record and empirical findings.
+Writes `out\<plan>.xray.json` (the contract) and `out\<plan>.marked.pdf`
+(annotations + the JSON embedded), and prints a one-screen summary.
 
-## Documentation
+```
+python -m xray run <plan.pdf> [--out DIR]
+python -m xray --version
+```
 
-- `docs/GUIDE.md` — full user & developer guide (usage, dependencies, updating, CLI, pipeline, output contract, trust tiers, module reference, extending).
-- `docs/ACCURACY.md` — accuracy results for both real-plan fixtures + adversarial verification summary.
-- `docs/mindmap.mermaid` — rendered system mind map (Mermaid source).
-- A styled, self-contained HTML reference (rendered mind map + pipeline diagrams, accuracy tables) is available as the "xray-by-looplet-docs" artifact.
+## Three ways to call it
+
+**1. CLI** — `python -m xray run <plan.pdf>` (above).
+
+**2. HTTP worker** (`server/app.py`, FastAPI):
+```
+uvicorn server.app:app --port 8000
+# POST /v1/takeoff  (multipart 'file' = plan PDF)  ->  quote-draft envelope
+```
+
+**3. MCP server** (`server/mcp_server.py`) — the clean Looplet integration:
+```
+python -m server.mcp_server        # stdio transport
+```
+Tools: `run_takeoff(pdf_path)`, `quote_draft(pdf_path)` (Looplet-ready lines),
+`run_takeoff_calibrated(pdf_path, page, p0, p1, known_mm)`,
+`marked_pdf(pdf_path, out_path)`, `engine_info()`.
+
+## What comes out
+
+`takeoff.json` (see `schema/takeoff.schema.json`): `engine`, `document`
+(pages with kind + scale), `entities`, `checks` (pass/flag, with evidence),
+`quantities` (qty, unit, formula, tier, evidence), `review`.
+
+**Trust tiers:** `reconciled` (independent evidence agrees) · `single-source`
+(one source, no assumption) · `needs-human` (an assumption was required —
+surfaced in `review`). Near-misses are **flagged with their delta, never
+dropped**.
+
+## Trade packs
+
+Quantify runs through a pluggable **pack registry** (`src/xray/packs.py`), so a
+trade is added without touching the engine:
+
+- `packs_shed.py` — steel portal-frame sheds (dimension geometry).
+- `packs_electrical.py` — electrical Schedule of Loads (table extraction →
+  reconciled BOM: breakers, cable, boards, loads).
+
+Add a pack: implement `Pack.detect()` + `Pack.quantify()`, `register()` it, and
+add a real fixture with hand-proven ground truths. See `docs/GUIDE.md`.
+
+## Scale calibration
+
+If the auto-detected scale isn't trustworthy the page carries `scale.verified =
+false` (the signal to prompt for calibration). A manual calibration overrides
+it:
+```
+engine.run(pdf, calibrations={0: {"p0": [x, y], "p1": [x, y], "known_mm": 5000}})
+```
+Two points in PDF coordinates + the real distance → exact mm-per-point.
+
+## Testing
+
+```
+set PYTHONPATH=src && python -m pytest tests -q      # expect: 103 passed
+```
+The two real plan sets under `fixtures/` are the permanent acceptance suite; the
+ground truths in `tests/` were proven by hand.
+
+## Layout
+
+```
+src/xray/        engine (extract, reassemble, grammar, scale, tables, chains,
+                 quantify, packs*, revu_writer, engine, cli)
+server/          FastAPI worker + MCP server + quote-line mapping
+schema/          takeoff.schema.json — the output contract
+fixtures/        real plan sets (shed, warehouse) + electrical schedule
+tests/           pytest suite (fixtures are the ground truths)
+tools/           dev scripts + the electrical fixture generator
+docs/            GUIDE · ACCURACY · HANDOVER · ROADMAP · mind map
+templates/       price / labour / overhead upload templates
+```
+
+## Docs
+
+- `docs/GUIDE.md` — full user & developer guide.
+- `docs/ACCURACY.md` — accuracy results for both fixtures.
+- `docs/HANDOVER.md` — integration handover.
+- `docs/ROADMAP.md` — the build order (plan of record).
+- `CONTEXT.md` — design decisions + empirical findings (source of truth).
