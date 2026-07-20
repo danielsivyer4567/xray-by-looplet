@@ -36,6 +36,9 @@ SPARSE_WORD_COUNT = 15
 # raster (warehouse scans: 9-29 words; doc pages with photos: 170+ words)
 RASTER_MIN_PIXELS = 300_000
 RASTER_MAX_WORDS = 50
+# a text-heavy page whose structured-output ratio is below this warrants a
+# human look ("read 94%, here's the 6% I couldn't") — a diagnostic, not a gate.
+COVERAGE_MIN = 0.15
 
 
 def _sha256(path: Path) -> str:
@@ -103,15 +106,24 @@ def run(pdf_path: str, calibrations: dict | None = None) -> dict:
             entities = classify(words, rect)
             scale = vote_scale(entities, rect, None, (calibrations or {}).get(i))
             checks = find_chain_checks(entities, rect)
+            tbls = extract_tables(words, rect)
             all_entities.extend(entities)
             all_checks.extend(checks)
-            all_tables.extend(extract_tables(words, rect))
+            all_tables.extend(tbls)
+            n_cells = sum(len(r) for t in tbls for r in t.rows)
+            ratio = round(min(1.0, (len(entities) + n_cells) / max(1, len(raw))), 3)
             pages_meta.append({
                 "n": i + 1,
                 "widthPt": float(w),
                 "heightPt": float(h),
                 "kind": _page_kind(page, len(raw)),
                 "scale": scale,
+                "coverage": {
+                    "words": len(raw),
+                    "entities": len(entities),
+                    "tableCells": n_cells,
+                    "structuredRatio": ratio,
+                },
             })
         try:
             producer = doc.get_metadata_value("Producer") or ""
@@ -124,6 +136,19 @@ def run(pdf_path: str, calibrations: dict | None = None) -> dict:
                       tables=all_tables, pages=pages_meta)
     quantities, pack_checks = run_packs(ctx)
     all_checks.extend(pack_checks)
+
+    # document-level coverage: how much of the readable text turned into
+    # structured output, and which text-heavy pages fell below the bar.
+    tot_words = sum(pm["coverage"]["words"] for pm in pages_meta)
+    tot_struct = sum(pm["coverage"]["entities"] + pm["coverage"]["tableCells"]
+                     for pm in pages_meta)
+    low_pages = [pm["n"] for pm in pages_meta
+                 if pm["coverage"]["words"] >= SPARSE_WORD_COUNT
+                 and pm["coverage"]["structuredRatio"] < COVERAGE_MIN]
+    doc_coverage = {
+        "overallRatio": round(min(1.0, tot_struct / max(1, tot_words)), 3),
+        "lowPages": low_pages,
+    }
 
     review = []
     for q in quantities:
@@ -140,6 +165,7 @@ def run(pdf_path: str, calibrations: dict | None = None) -> dict:
             "sha256": _sha256(p),
             "producer": producer,
             "pages": pages_meta,
+            "coverage": doc_coverage,
         },
         "entities": [asdict(e) for e in all_entities],
         "checks": [asdict(c) for c in all_checks],

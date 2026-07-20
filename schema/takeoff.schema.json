@@ -32,6 +32,15 @@
               "kind": { "enum": ["vector", "raster", "sparse"] },
               "sheetNumber": { "type": "string" },
               "sheetTitle": { "type": "string" },
+              "coverage": {
+                "type": "object",
+                "properties": {
+                  "words": { "type": "integer", "minimum": 0 },
+                  "entities": { "type": "integer", "minimum": 0 },
+                  "tableCells": { "type": "integer", "minimum": 0 },
+                  "structuredRatio": { "type": "number", "minimum": 0, "maximum": 1 }
+                }
+              },
               "scale": {
                 "type": "object",
                 "properties": {
@@ -43,6 +52,13 @@
                 }
               }
             }
+          }
+        },
+        "coverage": {
+          "type": "object",
+          "properties": {
+            "overallRatio": { "type": "number", "minimum": 0, "maximum": 1 },
+            "lowPages": { "type": "array", "items": { "type": "integer" } }
           }
         }
       }
