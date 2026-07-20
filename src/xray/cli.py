@@ -27,6 +27,8 @@ def _build_parser() -> argparse.ArgumentParser:
     run_p.add_argument("pdf", help="path to the plan PDF")
     run_p.add_argument("--out", default=None, metavar="DIR",
                        help="output directory (default: next to the PDF)")
+    run_p.add_argument("--report", action="store_true",
+                       help="also write a deterministic HTML quote (no LLM)")
     return ap
 
 
@@ -83,4 +85,10 @@ def main(argv=None) -> int:
     print(_summary(result))
     print(f"wrote    : {json_path}")
     print(f"wrote    : {marked_path}")
+
+    if args.report:
+        from xray.report import render_quote_html
+        report_path = out_dir / f"{pdf.stem}.quote.html"
+        report_path.write_text(render_quote_html(result), encoding="utf-8")
+        print(f"wrote    : {report_path}")
     return 0
