@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xray-by-looplet:takeoff-schema:0.1",
+  "title": "X-Ray TakeoffResult",
+  "type": "object",
+  "required": ["engine", "document", "entities", "checks", "quantities"],
+  "properties": {
+    "engine": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "xray-by-looplet" },
+        "version": { "type": "string" }
+      }
+    },
+    "document": {
+      "type": "object",
+      "required": ["path", "sha256", "pages"],
+      "properties": {
+        "path": { "type": "string" },
+        "sha256": { "type": "string" },
+        "producer": { "type": "string" },
+        "pages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["n", "widthPt", "heightPt", "kind"],
+            "properties": {
+              "n": { "type": "integer", "minimum": 1 },
+              "widthPt": { "type": "number" },
+              "heightPt": { "type": "number" },
+              "kind": { "enum": ["vector", "raster", "sparse"] },
+              "sheetNumber": { "type": "string" },
+              "sheetTitle": { "type": "string" },
+              "scale": {
+                "type": "object",
+                "properties": {
+                  "value": { "type": "string" },
+                  "mmPerPt": { "type": "number" },
+                  "methods": { "type": "array", "items": { "type": "string" } },
+                  "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "page", "type", "raw", "bbox", "confidence", "source"],
+        "properties": {
+          "id": { "type": "string" },
+          "page": { "type": "integer" },
+          "type": { "enum": ["DIM", "TAG", "SCALE", "SPEC", "LABEL", "LEVEL", "STD", "NOTEKEY"] },
+          "value": {},
+          "raw": { "type": "string" },
+          "bbox": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "source": { "enum": ["text", "reassembled", "ocr"] }
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "status", "detail"],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "enum": ["chain-sum", "trig", "cross-sheet", "count", "schedule-match"] },
+          "status": { "enum": ["pass", "flag"] },
+          "detail": { "type": "string" },
+          "delta": { "type": ["number", "null"] },
+          "page": { "type": "integer" },
+          "evidence": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "quantities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "trade", "item", "qty", "unit", "formula", "tier", "evidence"],
+        "properties": {
+          "id": { "type": "string" },
+          "trade": { "type": "string" },
+          "item": { "type": "string" },
+          "qty": { "type": "number" },
+          "unit": { "enum": ["ea", "lm", "m2", "m3", "kg", "t"] },
+          "formula": { "type": "string" },
+          "tier": { "enum": ["reconciled", "single-source", "needs-human"] },
+          "evidence": { "type": "array", "items": { "type": "string" } },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "review": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ref", "reason"],
+        "properties": {
+          "ref": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    }
+  }
+}
