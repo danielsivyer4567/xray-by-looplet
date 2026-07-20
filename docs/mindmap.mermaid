@@ -1,0 +1,39 @@
+mindmap
+  root((X-Ray by Looplet))
+    Purpose
+      Headless takeoff engine
+      PDF in / quantities out
+      No UI — presentation delegated
+      LLM never makes a number
+    Pipeline
+      1 Extract · PyMuPDF
+      2 Reassemble glyph-split runs
+      3 Grammar to typed entities
+      4 Scale voting per page
+      5 Checks chain/trig/count
+      6 Quantify rule packs
+      7 Write JSON + marked PDF
+    Entities
+      DIM dimensions
+      TAG door/window
+      SCALE · SPEC
+      LABEL · LEVEL
+      STD · NOTEKEY
+    Trust tiers
+      reconciled
+      single-source
+      needs-human
+    Outputs
+      takeoff.json / schema
+      marked.pdf / Revu-compatible
+      embedded attachment
+    Stack
+      Python 3.11
+      PyMuPDF / MuPDF
+      pikepdf / qpdf
+      pytest + jsonschema
+    Guardrails
+      No animated fill UX
+      No live-updating legend
+      No visual template search
+      Local-only / no cloud OCR
