@@ -80,7 +80,7 @@ def _evidence_bboxes(item: dict, entities: dict):
 
 
 def _pdf_rect(bbox, page_height: float):
-    """Top-left-origin PyMuPDF bbox -> bottom-left-origin PDF rect."""
+    """Top-left-origin (y-down) bbox -> bottom-left-origin PDF rect."""
     x0, y0, x1, y1 = bbox
     ry0 = page_height - y1
     ry1 = page_height - y0
