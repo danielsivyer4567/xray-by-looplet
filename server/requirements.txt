@@ -1,0 +1,6 @@
+# Mode B worker deps (in ADDITION to the engine's ../requirements.txt).
+# Install both:  pip install -r requirements.txt -r server/requirements.txt
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9   # required by FastAPI for multipart file uploads
+httpx>=0.27              # used by starlette's TestClient in server tests
