@@ -59,12 +59,14 @@ def build_quote_draft(result: dict) -> dict:
     n_pass = sum(1 for c in checks if c.get("status") == "pass")
     n_flag = len(checks) - n_pass
     doc = result.get("document", {})
+    coverage = doc.get("coverage", {}) or {}
     return {
         "engine": result.get("engine", {}),
         "document": {
             "path": doc.get("path"),
             "sha256": doc.get("sha256"),
             "pages": len(doc.get("pages", [])),
+            "coverage": coverage,  # how much of the readable text became structured
         },
         "quote_lines": lines,
         "flags": list(review),  # items a human must confirm before the quote is sent
@@ -75,5 +77,7 @@ def build_quote_draft(result: dict) -> dict:
             "single_source": sum(1 for ln in lines if ln["confidence_tier"] == "single-source"),
             "checks_pass": n_pass,
             "checks_flag": n_flag,
+            "coverage_ratio": coverage.get("overallRatio"),
+            "low_coverage_pages": list(coverage.get("lowPages", [])),
         },
     }

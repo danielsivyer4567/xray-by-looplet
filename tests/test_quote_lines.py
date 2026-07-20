@@ -90,3 +90,13 @@ def test_mapping_is_pure_over_a_minimal_dict():
     ln = quantity_to_line(q)
     assert ln.review_required is False
     assert ln.description == "widget" and ln.quantity == 3.0
+
+
+def test_quote_draft_carries_coverage(shed_draft):
+    """The confidence report must reach the Looplet-facing envelope."""
+    cov = shed_draft["document"]["coverage"]
+    assert 0.0 <= cov["overallRatio"] <= 1.0
+    assert isinstance(cov["lowPages"], list)
+    s = shed_draft["summary"]
+    assert s["coverage_ratio"] == cov["overallRatio"]
+    assert s["low_coverage_pages"] == cov["lowPages"]
