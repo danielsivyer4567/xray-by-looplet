@@ -196,8 +196,13 @@ the library, so the swap is contained.
   micro-case tokenises differently under PDFium, so that unit test now asserts
   the equivalent real recovery (13530 absent->present) instead.
 
-**Still on fitz (dev-only, NOT shipped, NOT in requirements):** the DXF export
-tool + `tools/extract_entities.py` / `tools/probe_layers.py`. Migrate in P8.
+**Still on fitz (dev-only, NOT shipped, NOT in requirements):**
+`tools/extract_entities.py` / `tools/probe_layers.py`. Migrate in P8.
+
+*(An earlier note here also listed "the DXF export tool". There is no such tool
+in the repo — no DXF reader or writer is tracked, and `ezdxf` is not a
+dependency. `out/*.dxf`, if present, is a stray artifact from a one-off
+prototype, not something the codebase generates.)*
 
 ## v0.1 additions after initial build (2026-07-20)
 
