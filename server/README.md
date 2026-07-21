@@ -19,9 +19,19 @@ uvicorn server.app:app --host 0.0.0.0 --port 8000
 { "status": "ok", "engine": "xray-by-looplet", "version": "0.1.0" }
 ```
 
+### `POST /v1/takeoff/raw`
+Multipart form, field `file` = the plan PDF. Returns the engine result
+**verbatim** — `{ engine, document, entities, checks, quantities, review }` — the
+same shape the CLI writes to `<plan>.xray.json`.
+
+Use this one for **plan viewers**: it keeps `entities[]` with their `bbox` and
+`page`, which is what lets a viewer highlight a quantity's evidence on the sheet.
+The quote envelope below deliberately drops them, so it cannot drive highlights.
+(`entity.page` is 0-based; `document.pages[].n` is 1-based.)
+
 ### `POST /v1/takeoff`
 Multipart form, field `file` = the plan PDF. Optional `?marked_pdf=false` to skip
-writing the annotated PDF.
+writing the annotated PDF. Use this one for **pricing/quote** consumers.
 
 Response envelope (`server/quote_lines.py::build_quote_draft`):
 ```json
