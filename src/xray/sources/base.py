@@ -86,6 +86,15 @@ class Symbol:
     attribs: dict = field(default_factory=dict)
     overridden: tuple = ()   # tags whose instance value differs from the default
 
+    # Per-placement identity. `id` is the chain of INSERT entity handles from
+    # the modelspace root placement down to this one. A definition INSERT has
+    # ONE handle but many placements — only the full chain is unique per
+    # placement. Handles are fixed in the file, so ids are deterministic across
+    # runs and stable under entity reordering (unlike ordinals). `parent_id` is
+    # the chain minus its last hop; None for a modelspace placement.
+    id: str = ""
+    parent_id: str | None = None
+
     @property
     def anonymous(self) -> bool:
         """`*U1`-style names are generated per file, so they are countable here

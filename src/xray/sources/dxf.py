@@ -89,7 +89,7 @@ def _attrs_for(insert, blocks) -> tuple[dict, tuple]:
 
 
 def expand_inserts(container, blocks, depth=0, path=(), origin=(0.0, 0.0),
-                   rot=0.0, scale=(1.0, 1.0)):
+                   rot=0.0, scale=(1.0, 1.0), chain=()):
     """Yield a Symbol for EVERY block placement, at any nesting depth.
 
     A component's real count only appears after recursion: one modelspace INSERT
@@ -104,10 +104,16 @@ def expand_inserts(container, blocks, depth=0, path=(), origin=(0.0, 0.0),
     if depth > MAX_BLOCK_DEPTH:
         return
     ca, sa = math.cos(math.radians(rot)), math.sin(math.radians(rot))
-    for e in container:
+    for i, e in enumerate(container):
         if e.dxftype() != "INSERT":
             continue
         name = e.dxf.name
+        # Identity: the chain of INSERT handles from the modelspace root down
+        # to this placement (see Symbol.id). The chain — not any single handle —
+        # is what stays unique when one definition is placed many times.
+        h = str(getattr(e.dxf, "handle", "") or f"i{i}")
+        sid = "/".join(chain + (h,))
+        pid = "/".join(chain) or None
         # local placement -> parent space: scale, then rotate, then translate
         lx = float(e.dxf.insert.x) * scale[0]
         ly = float(e.dxf.insert.y) * scale[1]
@@ -121,11 +127,13 @@ def expand_inserts(container, blocks, depth=0, path=(), origin=(0.0, 0.0),
         yield Symbol(block_name=name, layer=layer, x=wx, y=wy,
                      rotation=wrot, xscale=wsx, yscale=wsy,
                      trade=trade_for(layer), depth=depth, path=path,
-                     attribs=attribs, overridden=over)
+                     attribs=attribs, overridden=over,
+                     id=sid, parent_id=pid)
         blk = blocks.get(name)
         if blk is not None:
             yield from expand_inserts(blk, blocks, depth + 1, path + (name,),
-                                      (wx, wy), wrot, (wsx, wsy))
+                                      (wx, wy), wrot, (wsx, wsy),
+                                      chain + (h,))
 
 
 def _bbox_width(block, insert) -> float:
