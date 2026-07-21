@@ -43,7 +43,7 @@ get it for free.
 | Worker (FastAPI) + quote-line mapping | Tested end-to-end; `rate`/`amount` slots deliberately null awaiting P2 |
 | Marked-PDF output (standards-compliant annotations + embedded takeoff.json) | Confirmed rendering live in PDX |
 | Docs (GUIDE, ACCURACY, HANDOVER, mind map) | Committed |
-| DXF passthrough export | Proven — audit-clean R2010, opens in any CAD; productionize in P8a |
+| DXF passthrough export | **Not in the repo.** Prototyped once outside the codebase; no exporter code is tracked and `ezdxf` is not a dependency. Treat P8a as unstarted. |
 | PDX X-Ray rail design | Mockup approved; market patterns researched (markups-list rigor, price-book costing, on-drawing verification) |
 
 ## 4. Phase map
@@ -53,7 +53,7 @@ P1 marks+UUIDs ─→ P2 costing ─→ P3 estimating ─→ P4 routing/MCP
       ├─→ P5 PDX rail
       └─→ P6 BOM/connections
 P7 compliance packs (independent, ongoing)
-P8a DXF (done) ─→ P8b recon-to-dims ─→ P8c IFC/BIM ─→ P9 BLDR (+ texture library)
+P8a DXF (not started) ─→ P8b recon-to-dims ─→ P8c IFC/BIM ─→ P9 BLDR (+ texture library)
 P10 trade packs (independent, per fixtures supplied)
 ```
 
@@ -142,9 +142,12 @@ via P2.
 **Gate:** first pack (sheds) flags a seeded-violation fixture and passes a
 compliant one.
 
-### P8 — CAD line (a done · b L · c M · d S)
+### P8 — CAD line (a M · b L · c M · d S)
 
-- **a)** `xray export dxf` productionized — the passthrough underlay (proven).
+- **a)** `xray export dxf` — **not started.** No exporter exists in the repo and
+  there is no `export` CLI subcommand; `ezdxf` would be a new dependency. An
+  earlier passthrough underlay was prototyped outside the codebase, so the
+  approach is known-viable, but nothing is committed.
 - **b)** **Reconstruction-to-dimensions** (from scratch; the hard module):
   build the model from the *extracted dimensions* (16000 × 9000, 4 bays), not
   the plotted pixels — squared topology, real walls/openings. The drawing
@@ -315,10 +318,11 @@ A second front door to the extraction stage: read native CAD as input, not just
 PDF. Most "CAD drawings" arrive as CAD-plotted PDFs (already covered) — this is
 for the raw files a tradie may hand over.
 
-- **DXF**: read directly with ezdxf (already a dep, used for export). Map
-  LINE / LWPOLYLINE / TEXT / MTEXT / DIMENSION / INSERT (blocks + attributes)
-  into the same Word/Entity model the PDF path produces. Structured vector, so
-  NO glyph-split reconstruction; layers hand us free semantics.
+- **DXF**: read directly with ezdxf — **a new dependency to add** (it is NOT
+  currently in `requirements.txt`, and there is no DXF code in the repo yet).
+  Map LINE / LWPOLYLINE / TEXT / MTEXT / DIMENSION / INSERT (blocks +
+  attributes) into the same Word/Entity model the PDF path produces. Structured
+  vector, so NO glyph-split reconstruction; layers hand us free semantics.
 - **DWG**: convert to DXF first (ODA File Converter, free), then the DXF path.
 - Everything downstream (tables, packs, quantities, marks/UUIDs) is unchanged.
 *Gate:* a DXF of the shed reconstructs the same entities/quantities as its PDF.
