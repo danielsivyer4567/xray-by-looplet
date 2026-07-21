@@ -73,6 +73,25 @@ class Symbol:
     yscale: float = 1.0
     trade: str = ""          # layer -> trade tag, "" when unmapped
 
+    # Nesting. A block may contain INSERTs of other blocks, so a component's real
+    # count is only visible after recursing the block DAG and applying the
+    # cumulative transform. `depth` 0 is a modelspace placement; `path` names the
+    # containing assemblies, which is what makes a nested count auditable.
+    depth: int = 0
+    path: tuple = ()         # e.g. ("ASSEMBLY_GIRDER_JOINT", "STRUCTURAL_BRACKET")
+
+    # Instance attributes (ATTRIB) merged over the block's ATTDEF defaults. An
+    # instance override is the drawing's statement about THIS placement (a higher
+    # bolt grade, say) and must win over the block default.
+    attribs: dict = field(default_factory=dict)
+    overridden: tuple = ()   # tags whose instance value differs from the default
+
+    @property
+    def anonymous(self) -> bool:
+        """`*U1`-style names are generated per file, so they are countable here
+        but NEVER stable identity across files."""
+        return self.block_name.startswith("*")
+
 
 @dataclass
 class Measure:
@@ -92,6 +111,13 @@ class Measure:
     unit: str = ""           # resolved unit, "" when unresolved
     text: str = ""           # raw dim text; "<>" means derived, never typed
     trade: str = ""
+
+    # An override dimension states a number the geometry does not support. BOTH
+    # are kept: `value` is what the drawing measures, `text_value` is what it
+    # claims. When they disagree the quantity is `needs-human` — silently
+    # trusting either one is how a wrong number reaches a quote.
+    text_value: float | None = None
+    conflict: bool = False
 
 
 @dataclass

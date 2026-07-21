@@ -49,6 +49,13 @@ LAYER_TRADE = [
 NAME_SIZE = re.compile(r"(\d+(?:[._]\d+)?)\s*(FT|FOOT|FEET|IN|INCH|MM|CM|M)\b", re.I)
 NAME_UNIT = {"FT": "ft", "FOOT": "ft", "FEET": "ft", "IN": "in", "INCH": "in",
              "MM": "mm", "CM": "cm", "M": "m"}
+# ISO metric thread designation: M16 means a 16 mm nominal diameter. Anchored on
+# a non-letter (underscore counts as a word char, so \b fails on BOLT_M16).
+NAME_METRIC = re.compile(r"(?:^|[^A-Za-z])M(\d{1,3})(?![0-9A-Za-z])")
+# leading number in an override dimension text, e.g. "650.0 mm (FIELD VERIFY)"
+TEXT_NUM = re.compile(r"-?\d+(?:\.\d+)?")
+# a block DAG deeper than this is malformed or self-referential
+MAX_BLOCK_DEPTH = 12
 
 
 def trade_for(layer: str) -> str:
@@ -57,6 +64,68 @@ def trade_for(layer: str) -> str:
         if key in up:
             return trade
     return ""
+
+
+def _attrs_for(insert, blocks) -> tuple[dict, tuple]:
+    """Instance ATTRIBs merged over the block's ATTDEF defaults.
+
+    An ATTDEF is the block's default ("every M16 is grade 8.8"); an ATTRIB on the
+    placement is this instance's own statement ("this one is 10.9"). The instance
+    wins, and the overridden tags are recorded so the override stays auditable.
+    """
+    defaults, out, over = {}, {}, []
+    blk = blocks.get(insert.dxf.name)
+    if blk is not None:
+        for e in blk:
+            if e.dxftype() == "ATTDEF":
+                defaults[e.dxf.tag] = e.dxf.text
+    out.update(defaults)
+    for a in getattr(insert, "attribs", []) or []:
+        tag, val = a.dxf.tag, a.dxf.text
+        if tag in defaults and defaults[tag] != val:
+            over.append(tag)
+        out[tag] = val
+    return out, tuple(over)
+
+
+def expand_inserts(container, blocks, depth=0, path=(), origin=(0.0, 0.0),
+                   rot=0.0, scale=(1.0, 1.0)):
+    """Yield a Symbol for EVERY block placement, at any nesting depth.
+
+    A component's real count only appears after recursion: one modelspace INSERT
+    of an assembly can stand for dozens of parts (here, 3 assemblies carry 24 of
+    the 25 bolts). A top-level-only scan silently undercounts — the single most
+    consequential mistake this adapter could make, because the number still looks
+    plausible.
+
+    Positions carry through the cumulative transform, so a nested part reports
+    where it actually sits in model space.
+    """
+    if depth > MAX_BLOCK_DEPTH:
+        return
+    ca, sa = math.cos(math.radians(rot)), math.sin(math.radians(rot))
+    for e in container:
+        if e.dxftype() != "INSERT":
+            continue
+        name = e.dxf.name
+        # local placement -> parent space: scale, then rotate, then translate
+        lx = float(e.dxf.insert.x) * scale[0]
+        ly = float(e.dxf.insert.y) * scale[1]
+        wx = origin[0] + lx * ca - ly * sa
+        wy = origin[1] + lx * sa + ly * ca
+        wrot = rot + float(getattr(e.dxf, "rotation", 0.0) or 0.0)
+        wsx = scale[0] * float(getattr(e.dxf, "xscale", 1.0) or 1.0)
+        wsy = scale[1] * float(getattr(e.dxf, "yscale", 1.0) or 1.0)
+        layer = getattr(e.dxf, "layer", "") or ""
+        attribs, over = _attrs_for(e, blocks)
+        yield Symbol(block_name=name, layer=layer, x=wx, y=wy,
+                     rotation=wrot, xscale=wsx, yscale=wsy,
+                     trade=trade_for(layer), depth=depth, path=path,
+                     attribs=attribs, overridden=over)
+        blk = blocks.get(name)
+        if blk is not None:
+            yield from expand_inserts(blk, blocks, depth + 1, path + (name,),
+                                      (wx, wy), wrot, (wsx, wsy))
 
 
 def _bbox_width(block, insert) -> float:
@@ -104,6 +173,21 @@ def resolve_units(doc, symbols, blocks) -> dict:
         if abs(width - stated) / stated < 0.20:
             resolved, basis = unit, f"block name {name} ({stated:g}{unit} ~ {width:.2f} units)"
             mismatch = bool(declared) and declared != unit
+            return {"declared": declared, "resolved": resolved,
+                    "basis": basis, "mismatch": mismatch}
+
+    # ISO metric thread: a BOLT_M16 drawn 16 units across is a 16 mm bolt, so
+    # the drawing unit is the millimetre.
+    for name, blk in blocks.items():
+        m = NAME_METRIC.search(name)
+        if not m:
+            continue
+        stated = float(m.group(1))
+        width = _bbox_width(blk, None)
+        if stated > 0 and width > 0 and abs(width - stated) / stated < 0.20:
+            resolved = "mm"
+            basis = f"metric thread {name} (M{stated:g} ~ {width:.2f} units)"
+            mismatch = bool(declared) and declared != "mm"
             break
 
     return {"declared": declared, "resolved": resolved,
@@ -122,30 +206,38 @@ class DxfAdapter(SourceAdapter):
         doc = ezdxf.readfile(str(path))
         msp = doc.modelspace()
 
-        blocks = {b.name: b for b in doc.blocks if not b.name.startswith("*")}
+        # recursion needs the anonymous blocks too (*U1 groups hold real
+        # placements); unit evidence only looks at named ones
+        all_blocks = {b.name: b for b in doc.blocks}
+        blocks = {n: b for n, b in all_blocks.items() if not n.startswith("*")}
 
         symbols: list[Symbol] = []
         geometry: list[Measure] = []
         words = []          # DXF TEXT/MTEXT flow into the existing text pipeline
 
+        # every placement at every depth — see expand_inserts
+        symbols.extend(expand_inserts(msp, all_blocks))
+
         for e in msp:
             t = e.dxftype()
             layer = getattr(e.dxf, "layer", "") or ""
             try:
-                if t == "INSERT":
-                    symbols.append(Symbol(
-                        block_name=e.dxf.name, layer=layer,
-                        x=float(e.dxf.insert.x), y=float(e.dxf.insert.y),
-                        rotation=float(getattr(e.dxf, "rotation", 0.0) or 0.0),
-                        xscale=float(getattr(e.dxf, "xscale", 1.0) or 1.0),
-                        yscale=float(getattr(e.dxf, "yscale", 1.0) or 1.0),
-                        trade=trade_for(layer)))
-                elif t == "DIMENSION":
-                    # the measured span, from the geometry -- never the display
-                    # text, which is "<>" when derived
+                if t == "DIMENSION":
+                    # the measured span comes from the geometry, never from the
+                    # display text ("<>" means derived). An override text stating
+                    # a DIFFERENT number is kept alongside, never resolved away.
+                    measured = float(e.get_measurement())
+                    text = getattr(e.dxf, "text", "") or ""
+                    tv = None
+                    if text and text != "<>":
+                        m = TEXT_NUM.search(text)
+                        if m:
+                            tv = float(m.group())
                     geometry.append(Measure(
-                        kind="dimension", value=float(e.get_measurement()),
-                        layer=layer, text=getattr(e.dxf, "text", "") or "",
+                        kind="dimension", value=measured, layer=layer, text=text,
+                        text_value=tv,
+                        conflict=(tv is not None and
+                                  abs(tv - measured) > max(1e-6, abs(measured) * 1e-6)),
                         trade=trade_for(layer)))
                 elif t == "LINE":
                     a, b = e.dxf.start, e.dxf.end
