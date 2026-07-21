@@ -26,16 +26,25 @@ def test_pdf_adapter_is_registered():
     assert "pdf" in [a.name for a in adapters()]
 
 
+def test_adding_a_format_needed_no_engine_change():
+    """The seam's whole purpose: a second format is a new module plus
+    register(), with engine.run() untouched."""
+    pytest.importorskip("ezdxf", reason="CAD deps not installed")
+    assert "dxf" in [a.name for a in adapters()]
+
+
 def test_dispatch_picks_the_pdf_adapter():
     assert find_adapter(SHED).name == "pdf"
     assert find_adapter("PLAN.PDF").name == "pdf"  # case-insensitive
 
 
 def test_unsupported_format_names_what_is_registered():
+    # .dwg is genuinely unsupported (it needs converting to DXF first); .dxf is
+    # NOT used here any more -- the DXF adapter now claims it.
     with pytest.raises(ValueError) as e:
-        find_adapter("plan.dxf")
+        find_adapter("plan.dwg")
     msg = str(e.value)
-    assert "plan.dxf" in msg and "pdf" in msg
+    assert "plan.dwg" in msg and "pdf" in msg
 
 
 def test_read_returns_pure_data():

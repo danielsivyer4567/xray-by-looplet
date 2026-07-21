@@ -2,3 +2,5 @@ pypdfium2>=4
 pikepdf>=9
 jsonschema>=4
 pytest>=8
+# CAD source adapter (genuinely new — not used for export). Pure Python, MIT.
+ezdxf>=1.3

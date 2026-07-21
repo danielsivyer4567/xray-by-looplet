@@ -7,29 +7,23 @@ data. `engine.run()` then drives the same downstream pipeline (grammar -> scale
 
 Adapters registered today:
     pdf   — pypdfium2 text layer (see sources/pdf.py)
+    dxf   — native CAD via ezdxf (see sources/dxf.py; optional dep)
 
 Planned:
-    dxf   — native CAD via ezdxf (NOT built; ezdxf is not yet a dependency)
     dwg   — convert to DXF first, then the DXF path
     ocr   — raster sheets
 
 ## The two reserved slots
 
 `ReadResult` carries `symbols` and `geometry` alongside `pages`. Both are empty
-for PDF and **nothing reads them yet**. They exist so that adding a CAD adapter
-later is a new module plus a `register()` call, rather than a second re-cut of
-this seam.
+for PDF. CAD fills them:
 
-The split is the count-vs-measure axis, which the engine already makes: symbols
-are counted (`ea`), geometry is measured (`lm`, `m2`, `m3`). It is not a
-CAD-specific invention.
+  symbols  — list[Symbol]  (INSERT placements → counted ea)
+  geometry — list[Measure] (DIMENSION / LINE / LWPOLYLINE → measured)
 
-**The element types inside those lists are deliberately UNDEFINED.** Shaping
-them requires a real native CAD file to shape them against — what an INSERT /
-LINE / HATCH actually carries, which layer names appear, whether doors are
-individual block references or one block with a count attribute. Designing that
-from assumptions is how you end up reworking it when the first real file lands.
-Define these when a native DXF is in hand, not before.
+The split is the count-vs-measure axis the engine already makes. Shapes are
+defined in this module (`Symbol`, `Measure`), driven by
+fixtures/cad/architectural_test_fixtures.dxf.
 """
 from __future__ import annotations
 
@@ -59,6 +53,48 @@ class PageRead:
 
 
 @dataclass
+class Symbol:
+    """A placed block reference — a thing that is COUNTED (-> ea).
+
+    Shaped against a real native DXF (fixtures/cad/architectural_test_fixtures.dxf),
+    not from assumptions. `block_name` is the identity that makes counting exact:
+    grouping placements by name yields a true count with no recognition step, which
+    is the thing a PDF text layer fundamentally cannot provide.
+
+    `rotation` is degrees CCW; scales are per-axis (a mirrored placement arrives as
+    a negative scale, so counting must not assume 1.0).
+    """
+    block_name: str
+    layer: str
+    x: float
+    y: float
+    rotation: float = 0.0
+    xscale: float = 1.0
+    yscale: float = 1.0
+    trade: str = ""          # layer -> trade tag, "" when unmapped
+
+
+@dataclass
+class Measure:
+    """A MEASURED span or run (-> lm/m2/m3).
+
+    `kind` is "dimension" for an associative DIMENSION entity — whose value comes
+    from `get_measurement()`, i.e. the geometry it measures, never the display
+    text — or "line"/"polyline" for drawn geometry whose length we compute.
+
+    A dimension is the high-value case: it is the drawing's own statement of a
+    distance, so it can RECONCILE against measured geometry. That cross-check is
+    what lets a CAD source reach the `reconciled` tier where a PDF usually cannot.
+    """
+    kind: str                # dimension | line | polyline
+    value: float             # measurement in drawing units
+    layer: str
+    unit: str = ""           # resolved unit, "" when unresolved
+    text: str = ""           # raw dim text; "<>" means derived, never typed
+    trade: str = ""
+
+
+@dataclass
 class ReadResult:
     """Everything one source file yielded. Pure data — no open file handles.
 
@@ -68,9 +104,15 @@ class ReadResult:
     pages: list[PageRead]
     producer: str = ""       # source identity; "" when the format has none
 
-    # --- reserved; empty for the PDF adapter, unread by anything today ---
-    symbols: list = field(default_factory=list)   # counted things (-> ea)
-    geometry: list = field(default_factory=list)  # measured things (-> lm/m2/m3)
+    # Non-text content. Empty for PDF (a text layer has neither), populated by
+    # CAD adapters. Split on the count-vs-measure axis the engine already makes.
+    symbols: list = field(default_factory=list)   # list[Symbol]  -> ea
+    geometry: list = field(default_factory=list)  # list[Measure] -> lm/m2/m3
+
+    # Unit provenance. A CAD header can declare a unit that the geometry
+    # contradicts, so the resolved unit and the evidence for it travel together
+    # and any conflict is surfaced, never silently propagated.
+    units: dict = field(default_factory=dict)     # {declared, resolved, basis, mismatch}
 
 
 class SourceAdapter:
