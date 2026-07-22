@@ -33,13 +33,14 @@ _SRC = Path(__file__).resolve().parents[1] / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from xray import ENGINE_NAME, __version__, engine
 from xray.markup_writer import write_marked_pdf
 
+from server import hardening
 from server.quote_lines import build_quote_draft
 
 app = FastAPI(title="X-Ray by Looplet - takeoff worker", version=__version__)
@@ -55,27 +56,64 @@ app.add_middleware(
 )
 
 
-async def _read_plan_upload(file: UploadFile) -> tuple[Path, Path]:
-    """Validate + spool an uploaded plan PDF. Returns (workdir, pdf_path)."""
+def _auth(authorization: str | None = Header(None)) -> None:
+    """API-key gate. Open when XRAY_API_KEYS is unset (local dev mode)."""
+    if not hardening.check_api_key(authorization):
+        raise HTTPException(status_code=401, detail="missing or invalid API key")
+
+
+async def _read_plan_upload(file: UploadFile) -> tuple[Path, Path, bytes]:
+    """Validate + spool an uploaded plan. Returns (workdir, path, bytes).
+
+    Guardrails before any parser touches the bytes: extension allow-list,
+    size cap (413), and magic-byte sanity (415) — a hostile upload fails
+    cheap and early, never inside pdfium/ezdxf.
+    """
     name = file.filename or ""
-    if not name.lower().endswith(".pdf"):
-        raise HTTPException(status_code=415, detail="expected a .pdf upload")
+    if not name.lower().endswith(hardening.ALLOWED_EXTENSIONS):
+        raise HTTPException(status_code=415,
+                            detail="expected a .pdf or .dxf upload")
     data = await file.read()
     if not data:
         raise HTTPException(status_code=400, detail="empty upload")
+    if len(data) > hardening.MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413,
+                            detail=f"upload exceeds {hardening.MAX_UPLOAD_BYTES // (1024*1024)} MB limit")
+    if not hardening.magic_ok(name, data):
+        raise HTTPException(status_code=415,
+                            detail="file content does not match its extension")
 
     workdir = Path(tempfile.mkdtemp(prefix="xray-"))
     pdf_path = workdir / Path(name).name
     pdf_path.write_bytes(data)
-    return workdir, pdf_path
+    return workdir, pdf_path, data
 
 
-def _run_engine(pdf_path: Path) -> dict:
-    """engine.run with a uniform failure contract (422, never a raw 500 stack)."""
+def _run_engine(pdf_path: Path, data: bytes) -> tuple[dict, bool]:
+    """engine.run with cache + optional child-process isolation.
+
+    Returns (result, cache_hit). Identical bytes + identical engine version
+    -> the identical cached result, instantly: idempotency as a live
+    demonstration of determinism. Failures are a uniform 422 (never a raw
+    500 stack); a wedged parse in isolated mode dies with the child, not
+    with the server.
+    """
+    sha = hardening.sha256_of(data)
+    cached = hardening.cache_get(sha, __version__)
+    if cached is not None:
+        return cached, True
     try:
-        return engine.run(str(pdf_path))
+        if hardening.ISOLATE_PARSE:
+            result = hardening.run_with_timeout(hardening.engine_run_child,
+                                                str(pdf_path))
+        else:
+            result = engine.run(str(pdf_path))
+    except hardening.ParseTimeout as exc:
+        raise HTTPException(status_code=422, detail=f"takeoff failed: {exc}")
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"takeoff failed: {exc}")
+    hardening.cache_put(sha, __version__, result)
+    return result, False
 
 
 @app.get("/health")
@@ -83,7 +121,7 @@ def health() -> dict:
     return {"status": "ok", "engine": ENGINE_NAME, "version": __version__}
 
 
-@app.post("/v1/takeoff/raw")
+@app.post("/v1/takeoff/raw", dependencies=[Depends(_auth)])
 async def takeoff_raw(file: UploadFile = File(...)) -> JSONResponse:
     """The engine result verbatim -- entities, checks, quantities, review.
 
@@ -91,17 +129,19 @@ async def takeoff_raw(file: UploadFile = File(...)) -> JSONResponse:
     one interchangeably. No marked PDF: callers of this route render the plan
     themselves and draw evidence from entities[].bbox.
     """
-    _workdir, pdf_path = await _read_plan_upload(file)
-    return JSONResponse(_run_engine(pdf_path))
+    _workdir, pdf_path, data = await _read_plan_upload(file)
+    result, hit = _run_engine(pdf_path, data)
+    return JSONResponse(result,
+                        headers={"X-XRay-Cache": "hit" if hit else "miss"})
 
 
-@app.post("/v1/takeoff")
+@app.post("/v1/takeoff", dependencies=[Depends(_auth)])
 async def takeoff(
     file: UploadFile = File(...),
     marked_pdf: bool = Query(True, description="also write the marked PDF"),
 ) -> JSONResponse:
-    workdir, pdf_path = await _read_plan_upload(file)
-    result = _run_engine(pdf_path)
+    workdir, pdf_path, data = await _read_plan_upload(file)
+    result, hit = _run_engine(pdf_path, data)
     draft = build_quote_draft(result)
 
     if marked_pdf:
@@ -114,4 +154,5 @@ async def takeoff(
             draft["flags"].append(
                 {"ref": "marked-pdf", "reason": f"annotation write failed: {exc}"})
 
-    return JSONResponse(draft)
+    return JSONResponse(draft,
+                        headers={"X-XRay-Cache": "hit" if hit else "miss"})
