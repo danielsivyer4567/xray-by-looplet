@@ -7,44 +7,27 @@
 // takeoff.json out. No network egress, no LLM in the request path.
 const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const path = require("path");
-const os = require("os");
-const fs = require("fs");
-const { execFile } = require("child_process");
 
-// Resolve the frozen engine: packaged -> resources/engine/<exe>; dev -> engine/bin/<exe>.
-function enginePath() {
-  const exe = process.platform === "win32" ? "xray-engine.exe" : "xray-engine";
-  const packaged = path.join(process.resourcesPath || "", "engine", exe);
-  if (fs.existsSync(packaged)) return packaged;
-  return path.join(__dirname, "engine", "bin", exe);
+// The spawn logic lives in ../host, owned by the engine repo, so this app and
+// any embedding host (e.g. the Looplet CRM) run the engine the SAME way. When
+// that logic was copied per-host the copies drifted, and the busier host quietly
+// became the real implementation.
+// Declared as a file: dependency (see package.json) rather than required by
+// relative path, so npm places it in node_modules and electron-builder packages
+// it — a "../host" require would resolve in dev and vanish from the installer.
+const xrayHost = require("@looplet/xray-host");
+
+// Where this app might find the binary. The host kit does the resolving; only
+// the candidate list is app-specific.
+function engineCandidates() {
+  return [
+    path.join(process.resourcesPath || "", "engine", xrayHost.EXE), // packaged
+    path.join(__dirname, "engine", "bin", xrayHost.EXE),            // dev build
+  ];
 }
 
-// Run one takeoff. The engine writes <name>.xray.json into a scratch dir we own
-// and wipe; we never leave client files on shared storage (public-API rule,
-// applied to the desktop too).
 function runTakeoff(pdfPath) {
-  return new Promise((resolve, reject) => {
-    const bin = enginePath();
-    if (!fs.existsSync(bin)) {
-      return reject(new Error(
-        "engine binary not found — run scripts/build-engine first (" + bin + ")"));
-    }
-    const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "xray-"));
-    execFile(bin, ["run", pdfPath, "--out", outDir], { timeout: 120000 },
-      (err, _stdout, stderr) => {
-        try {
-          if (err) return reject(new Error(stderr || err.message));
-          const jsonFile = fs.readdirSync(outDir).find((f) => f.endsWith(".json"));
-          if (!jsonFile) return reject(new Error("engine produced no takeoff.json"));
-          const raw = fs.readFileSync(path.join(outDir, jsonFile), "utf8");
-          resolve(JSON.parse(raw));
-        } catch (e) {
-          reject(e);
-        } finally {
-          fs.rm(outDir, { recursive: true, force: true }, () => {});
-        }
-      });
-  });
+  return xrayHost.runTakeoff(pdfPath, { candidates: engineCandidates() });
 }
 
 function createWindow() {

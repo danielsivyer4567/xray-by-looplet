@@ -1,6 +1,19 @@
-pypdfium2>=4
-pikepdf>=9
-jsonschema>=4
-pytest>=8
-# CAD source adapter (genuinely new — not used for export). Pure Python, MIT.
-ezdxf>=1.3
+# Pinned exactly, not floored. The engine's promise is that the same file in
+# produces the same JSON out, and these libraries are what read the file — an
+# unpinned floor means a fresh install can silently change a quantity, which is
+# the one failure the product cannot absorb. parity/manifest.json records the
+# versions the reference takeoffs were frozen under; keep the two in step.
+#
+# pypdfium2 carries a bundled PDFium build (5.12.1 -> PDFium 152.0.7947.0).
+# Measured: PDFium 149.0.7802.0 (pypdfium2 5.7.1) and 152.0.7947.0 produce
+# byte-identical output on all three fixtures, so this pin is hygiene rather
+# than a fix for a known break. Three fixtures across two builds is not proof of
+# general invariance, so upgrade deliberately: bump, run parity, and only
+# re-freeze once the new numbers are confirmed correct.
+pypdfium2==5.12.1
+pikepdf==10.10.0
+jsonschema==4.26.0
+ezdxf==1.4.4
+
+# Test-only.
+pytest==9.1.1

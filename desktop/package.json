@@ -12,6 +12,9 @@
     "dist:win": "electron-builder --win",
     "build:engine": "node -e \"console.log('run scripts/build-engine.ps1 (Windows) or scripts/build-engine.sh first')\""
   },
+  "dependencies": {
+    "@looplet/xray-host": "file:../host"
+  },
   "devDependencies": {
     "electron": "^31.0.0",
     "electron-builder": "^24.13.3"
