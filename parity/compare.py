@@ -24,25 +24,25 @@ to sit on disk, which is not a property of the drawing), then the object is
 serialised with sorted keys, no whitespace, and no ASCII escaping. That exact
 form is what the pinned digests in manifest.json are taken over.
 
-WHY the environment is part of the gate
----------------------------------------
-Byte-identity is a property of (engine + fixture + NATIVE PDF STACK), not of the
-engine alone. PDFium is a moving target: its text extraction and raster/vector
-classification change between Chromium builds, so the same engine on a different
-PDFium can legitimately produce different — and differently correct — output.
-This was not hypothetical. It was measured: on PDFium 152.0.7947.0 the shed
-fixture still matched its digest frozen under 149.0.7802.0, while the
-raster-heavy warehouse and the electrical schedule did not. A digest mismatch
-therefore has two very different causes, and a gate that cannot tell them apart
-is close to useless:
+WHY the environment is recorded
+-------------------------------
+Byte-identity is in principle a property of (engine + fixture + NATIVE PDF
+STACK), not of the engine alone: PDFium's text extraction and raster/vector
+classification can change between Chromium builds. So the manifest records the
+build each reference was frozen under, and a mismatch on a moved stack is
+reported as ENVIRONMENT DRIFT rather than a bare "hash differs", keeping two
+very different causes apart:
 
     engine logic changed   -> a real regression, fix the code
-    PDFium build changed   -> expected drift, re-freeze deliberately
+    PDFium build changed   -> possible expected drift, investigate first
 
-So the manifest records the PDFium build each reference was frozen under, and a
-mismatch is reported as ENVIRONMENT DRIFT rather than a bare "hash differs".
-Because `requirements.txt` pins only `pypdfium2>=4`, a fresh install can silently
-move this floor — which is exactly the failure this gate is here to make loud.
+This is PRECAUTIONARY. It was tested directly and PDFium did NOT matter here:
+all three fixtures produced byte-identical output under 149.0.7802.0 and
+152.0.7947.0. Three fixtures across two builds is not proof of general
+invariance, so `requirements.txt` should still pin pypdfium2 exactly rather than
+`>=4` — as hygiene, not as a fix for a known break. See parity/README.md, which
+also records a set of legacy reference digests that do not reproduce here and
+are not explained by PDFium, by engine history, or by the fixtures.
 """
 from __future__ import annotations
 

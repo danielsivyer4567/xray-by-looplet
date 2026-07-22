@@ -34,33 +34,61 @@ json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 and sha256 over the UTF-8 bytes. Reference files are stored in exactly this form,
 so the bytes on disk *are* the bytes hashed.
 
-## Byte-identity depends on the native PDF stack
+## The environment is recorded, as a precaution
 
-This is the part that bites. Byte-identity is a property of
-**(engine + fixture + PDFium build)**, not the engine alone. PDFium's text
-extraction and raster/vector classification change between Chromium builds.
-
-Measured, not hypothetical: references frozen under PDFium **149.0.7802.0** were
-re-checked under **152.0.7947.0**. The shed fixture still matched. The
-raster-heavy warehouse and the electrical schedule did not — same engine code,
-same input, different bytes out.
-
-Two consequences:
-
-1. **`requirements.txt` pins `pypdfium2>=4`, which is unpinned in practice.** A
-   fresh `pip install` can silently move the PDFium floor and change quantities.
-   Pin it to the build the references were frozen under.
-2. **The WASM engine must be built against the same PDFium build** as the
-   manifest records, or it cannot pass this gate — see the handover's §5 pin.
-
-So `manifest.json` records the environment each reference was frozen under, and a
-digest mismatch is reported as `ENVIRONMENT DRIFT` when the stack moved. That
-distinction matters:
+`manifest.json` records the PDFium build and pypdfium2 version each reference was
+frozen under, and a digest mismatch where the stack has moved is reported as
+`ENVIRONMENT DRIFT`. PDFium's text extraction and raster/vector classification
+*can* change between Chromium builds, so keeping the two causes separable is
+cheap insurance:
 
 ```
 engine logic changed  -> a real regression, fix the code
-PDFium build changed  -> expected drift, re-freeze deliberately
+PDFium build changed  -> possible expected drift, investigate before re-freezing
 ```
+
+**This is precautionary, not a diagnosed problem.** It was tested directly: the
+engine was run against all three fixtures under PDFium **149.0.7802.0**
+(pypdfium2 5.7.1) and **152.0.7947.0** (pypdfium2 5.12.1). Every fixture produced
+**byte-identical output on both builds**. On this evidence PDFium's version does
+not perturb these takeoffs, and the WASM engine is *not* hostage to matching a
+specific PDFium build — a constraint earlier notes asserted but that no
+measurement here supports.
+
+That is three fixtures across two builds, not a proof of general invariance, so
+`requirements.txt` should still pin `pypdfium2` exactly rather than `>=4`. Pin it
+as hygiene, not as a fix for a known break.
+
+## Unreproducible legacy digests (open)
+
+An earlier handover pinned reference digests for all three fixtures. Only one of
+them reproduces here:
+
+| fixture | legacy pin | this repo |
+| --- | --- | --- |
+| shed-manners-aline | `6b3a766ca4aa5348` | **matches exactly** |
+| electrical-schedule | `18d2590841088f9b` | `e8e57aaea8ecdbbc` |
+| warehouse-design21 | `d94ad42640b70042` | `57b420a6bd36aadd` |
+
+The two mismatches were chased and are **not** explained by the obvious suspects:
+
+- **Not PDFium** — identical output under 149 and 152 (above).
+- **Not recent engine commits** — identical output at `2748f4f`, `cfe0771`,
+  `b35ae3e`, `33fdfd2` and `ee8b25e`.
+- **Not the fixtures drifting** — `fixtures/` is unmodified since `6533f1a`,
+  which predates every commit tested.
+- **Not the canonical form** — the shed fixture matches its legacy pin *exactly*
+  under that same canonicalisation, which would be a wild coincidence otherwise.
+
+The digests are stable and self-consistent within this repo; they simply do not
+match the legacy pins. The most likely explanation is that the legacy values were
+produced somewhere with different fixture files or a different engine state.
+Until that is resolved, **this repo's own frozen references are the oracle** and
+the legacy digests should not be treated as authoritative.
+
+Worth noting while it is open: `warehouse-design21` yields **0 quantities**, and
+no test asserts anything about its quantities either way. If that fixture is
+supposed to produce numbers, the gate is currently freezing in a silent gap.
 
 ## Re-freezing
 
