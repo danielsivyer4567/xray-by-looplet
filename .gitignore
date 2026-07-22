@@ -5,3 +5,16 @@ out/
 verify_tmp/
 *.marked.pdf
 takeoff.json
+
+# secrets — NEVER commit (signing keys, API keys, supplier credentials).
+# Defensive: these are already untracked, but listing them prevents an
+# accidental `git add` from ever leaking a key into a private-but-shared repo.
+keys/
+.env
+*.env
+!.env.example
+*.pem
+*.jwk
+*.p12
+*.pfx
+*.key
