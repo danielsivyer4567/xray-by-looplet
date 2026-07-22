@@ -49,6 +49,9 @@ def run(pdf_path: str, calibrations: dict | None = None) -> dict:
     `calibrations`: optional {page_index (0-based): calibration} where a
     calibration is {"p0":[x,y], "p1":[x,y], "known_mm": float} or
     {"mmPerPt": float}. A calibrated page's scale wins over auto-voting.
+
+    Order conversion (measured -> orderable stock) is applied downstream by the
+    hardening pass, whose purchase optimiser is xray.orders (one tested kernel).
     """
     p = Path(pdf_path)
     # The adapter owns everything format-specific and returns pure data — it

@@ -253,3 +253,45 @@ def kg_per_m_from_designation(name: str) -> float | None:
 def weight_kg(length_m: float, kg_per_m: float) -> float:
     """Deterministic member/stock weight for logistics and cranage totals."""
     return length_m * kg_per_m
+
+
+def convert_linear(total_m: float, profile: StockProfile) -> OrderResult:
+    """Cover a linear run of `total_m` with whole stock lengths.
+
+    HONEST LIMITATION: from a *sum* of lengths this is an estimate — order
+    `ceil(total / stock)` lengths and note it. The exact cut-optimal answer
+    needs the individual member lengths (a cut list); feed those to
+    `pack_cutlist` instead. For a linear run we prefer the length that
+    minimises total drop (tie: longer stock -> fewer joins).
+    """
+    if total_m <= 0:
+        return OrderResult(0, 0.0, 0, 0.0, 100.0, "none", [], notes="zero required")
+    avail = sorted(profile.sourceable())
+    best = None
+    for stock in avail:
+        lengths = math.ceil(total_m / stock - 1e-9)
+        drop = lengths * stock - total_m
+        key = (round(drop, 6), -stock)     # min drop, then longer stock
+        if best is None or key < best[0]:
+            best = (key, stock, lengths, drop)
+    if best is None:
+        raise CannotSource("no stocked length configured")
+    _, stock, lengths, drop = best
+    order = _round_to_pack(lengths, profile.pack_size)
+    if order != lengths:
+        drop = order * stock - total_m
+    wpk = (order * stock * profile.kg_per_m) if profile.kg_per_m else None
+    return OrderResult(
+        order_qty=order, stock_length_m=stock, pieces_per_length=0,
+        total_offcut_m=round(drop, 4),
+        yield_pct=round(100.0 * total_m / (order * stock), 1),
+        method=f"linear-from-{stock:g}m",
+        purchase=[Purchase(stock, order, round(drop, 4))],
+        delivered_weight_kg=wpk,
+        notes=(f"{order} x {stock:g} m covers {total_m:g} m run (sum-based "
+               f"estimate; exact cut needs a member cut list)"))
+
+
+# Note: the *application* layer that maps a takeoff quantity -> a buy plan lives
+# in xray.hardening (the config/wiring pass). This module is the pure, tested
+# optimisation KERNEL it calls — one implementation, one place.

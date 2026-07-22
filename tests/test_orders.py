@@ -154,3 +154,21 @@ def test_kg_per_m_from_designation():
 def test_weight_kg_deterministic():
     # a 6.0m 310UB40.4 beam weighs 6.0 * 40.4 = 242.4 kg
     assert round(weight_kg(6.0, kg_per_m_from_designation("310UB40.4")), 1) == 242.4
+
+
+# ---- linear run -> stock lengths (min-waste selection) -------------------
+
+def test_convert_linear_min_waste_length():
+    from xray.orders import convert_linear
+    # 92.085 m over {6,8,9}: 6m->16 (96, drop 3.915); 8m->12 (96, 3.915);
+    # 9m->11 (99, 6.915). Min drop 3.915, tie 6/8 -> longer 8m wins.
+    r = convert_linear(92.085, StockProfile("s", preferred=(6.0, 8.0, 9.0)))
+    assert r.stock_length_m == 8.0
+    assert r.order_qty == 12
+    assert round(r.total_offcut_m, 3) == 3.915
+
+
+def test_convert_linear_zero():
+    from xray.orders import convert_linear
+    r = convert_linear(0.0, StockProfile("s", preferred=(6.0,)))
+    assert r.order_qty == 0

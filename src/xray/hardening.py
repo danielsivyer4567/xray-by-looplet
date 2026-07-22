@@ -61,11 +61,15 @@ def _enrich(q, cfg):
 
     if q.unit == "lm" and "steel" in str(q.item).lower():
         total = q.order_qty if q.order_qty is not None else q.qty
-        stock = max(cfg["steel_stock_lengths_m"])
-        n = int(math.ceil(total / stock)) if stock else 0
+        # Delegate stock selection to the tested optimiser (xray.orders): it picks
+        # the MINIMUM-WASTE stock length, not merely the longest — one kernel.
+        from xray.orders import StockProfile, convert_linear
+        res = convert_linear(
+            total, StockProfile("steel", preferred=tuple(cfg["steel_stock_lengths_m"])))
         q.purchase.append({
-            "stock_length_m": stock, "count": n,
-            "ordered_m": _round(n * stock), "offcut_m": _round(n * stock - total),
+            "stock_length_m": res.stock_length_m, "count": res.order_qty,
+            "ordered_m": _round(res.order_qty * res.stock_length_m),
+            "offcut_m": _round(res.total_offcut_m),
             "source": f"stock lengths {cfg['steel_stock_lengths_m']} (default {cfg['date']})",
         })
 
