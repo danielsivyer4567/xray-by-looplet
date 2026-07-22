@@ -76,3 +76,35 @@ Write `pricing/<supplier>.py` producing `CatalogueRow`s and a `validate()`
 report. Parse defensively — most price lists are designed documents, not data
 exports, so bind to row *shape* rather than column position, and count what you
 could not read instead of quietly dropping it.
+
+## Mapping a takeoff to SKUs
+
+```python
+from pricing.mapping import MappingStore, map_takeoff, summarise
+
+store = MappingStore("oxworks")            # pricing/out/oxworks-mappings.json
+results = map_takeoff(takeoff["quantities"], catalogue_rows, store)
+```
+
+**The mapper proposes; a human decides.** A line is bound to a SKU only because
+someone confirmed it once — after that it is remembered and nobody is asked
+again. Everything else comes back as ranked candidates or `needs-human`, the
+same tier the engine uses when a drawing will not tell it something.
+
+That restraint is the feature, and the catalogue shows why. "65 x 16mm Radiator
+Panel 1800MM HIGH" matches **three** rows scoring 1.00 — identical descriptions
+at **$480, $393 and $348** on pages 136, 137 and 138. Auto-accepting the top hit
+would quietly cost 38% more on an order nobody questioned.
+
+- **Units are a gate, not a score.** A per-metre product cannot fulfil an m2
+  line, whatever the words say. Mismatch disqualifies outright.
+- **Deterministic.** Token and dimension arithmetic only — no LLM, no network.
+  The same inputs always rank the same way, so a review is reproducible.
+- **Explained.** Every candidate carries a `why` and the source page, so a
+  price can be checked against the PDF before it is trusted.
+- **Memory is per supplier**, keyed on the normalised item *and* its unit —
+  buying "panel" by the metre and by the square metre are different commercial
+  decisions and are confirmed separately. Stored as readable JSON with who
+  confirmed each one and when; a builder can audit or correct it by hand.
+
+Mappings live in `pricing/out/` and are gitignored along with the prices.
