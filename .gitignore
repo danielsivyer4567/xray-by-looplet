@@ -3,6 +3,7 @@ __pycache__/
 .pytest_cache/
 out/
 verify_tmp/
+_to_delete/
 *.marked.pdf
 takeoff.json
 
