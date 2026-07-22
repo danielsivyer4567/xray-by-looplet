@@ -19,3 +19,6 @@ keys/
 *.p12
 *.pfx
 *.key
+
+# salvage/quarantine folder used when recovering from git lock or branch mishaps
+_to_delete/

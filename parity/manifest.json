@@ -1,0 +1,25 @@
+{
+  "canonical_form": "document.path removed, then json.dumps(sort_keys=True, separators=(',',':'), ensure_ascii=False), sha256 of the UTF-8 bytes",
+  "environment": {
+    "pdfium": "152.0.7947.0",
+    "pypdfium2": "5.12.1"
+  },
+  "fixtures": {
+    "electrical-schedule": {
+      "pages": 1,
+      "quantities": 13,
+      "sha256": "e8e57aaea8ecdbbca4302d1b42724207f14cae9919aba01f683b4ebc6e7b155f"
+    },
+    "shed-manners-aline": {
+      "pages": 5,
+      "quantities": 13,
+      "sha256": "6b3a766ca4aa534813def40cc56f847c99723f93369b8baa293e72e4b83f2430"
+    },
+    "warehouse-design21": {
+      "pages": 50,
+      "quantities": 0,
+      "sha256": "57b420a6bd36aaddd8367af26858a09fbb251a97b25e7e645c132013a239a8e7"
+    }
+  },
+  "note": "Frozen oracle output of the Python engine. Regenerate with `python -m parity.freeze` \u2014 never edit by hand."
+}
