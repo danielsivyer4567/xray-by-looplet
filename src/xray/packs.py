@@ -55,14 +55,38 @@ def iter_packs():
 
 def run_packs(ctx: "PackContext"):
     """Run every registered pack whose detect() matches; concat results.
-    A pack that raises is skipped (never crashes the run)."""
+
+    A pack that raises must never crash the run — one broken trade should not
+    cost the operator every other trade's numbers. But it must never be silent
+    either: a swallowed failure is indistinguishable from "there was nothing
+    here to measure", and for a takeoff those two mean opposite things. A
+    builder who is told nothing was found will move on; a builder who is told
+    the steel pack broke will look again. So failures become flagged checks,
+    which the engine surfaces in review[].
+    """
+    from xray.chains import Check  # local: keeps this module import-light
+
     quantities, extra_checks = [], []
     for p in _registry:
         try:
-            if p.detect(ctx):
-                q, c = p.quantify(ctx)
-                quantities.extend(q or [])
-                extra_checks.extend(c or [])
-        except Exception:
-            pass
+            applies = p.detect(ctx)
+        except Exception as e:
+            extra_checks.append(Check(
+                id=f"chk-pack-{p.name}-detect", kind="pack-error", status="flag",
+                detail=(f"trade pack {p.name!r} failed while deciding whether it "
+                        f"applies to this document, so its trade was not "
+                        f"measured: {type(e).__name__}: {e}")))
+            continue
+        if not applies:
+            continue
+        try:
+            q, c = p.quantify(ctx)
+            quantities.extend(q or [])
+            extra_checks.extend(c or [])
+        except Exception as e:
+            extra_checks.append(Check(
+                id=f"chk-pack-{p.name}-quantify", kind="pack-error", status="flag",
+                detail=(f"trade pack {p.name!r} recognised this document but failed "
+                        f"while producing quantities, so its trade is missing from "
+                        f"this takeoff: {type(e).__name__}: {e}")))
     return quantities, extra_checks

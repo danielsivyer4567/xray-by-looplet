@@ -23,7 +23,7 @@ from xray.chains import Check, find_chain_checks
 from xray.grammar import classify
 from xray.scale import vote_scale
 from xray.tables import extract_tables
-from xray.packs import PackContext, run_packs
+from xray.packs import PackContext, iter_packs, run_packs
 from xray.quantify import Quantity
 from xray.sources import find_adapter
 from xray.sources.base import SPARSE_WORD_COUNT
@@ -148,6 +148,26 @@ def run(pdf_path: str, calibrations: dict | None = None) -> dict:
         "overallRatio": round(min(1.0, tot_struct / max(1, tot_words)), 3),
         "lowPages": low_pages,
     }
+
+    # An empty takeoff is not self-explanatory. "No trade pack recognised this
+    # drawing" and "the pack that recognised it broke" produce the identical
+    # empty table, and they mean opposite things to whoever opens it. Neither
+    # should be inferred from silence, so the result says which one happened.
+    if not quantities:
+        broken = [c for c in all_checks if c.kind == "pack-error"]
+        if broken:
+            detail = ("no quantities were produced because every trade pack that "
+                      "applied to this drawing failed — see the pack-error checks "
+                      "for which, and why")
+        else:
+            trades = sorted({pack.trade for pack in iter_packs()})
+            detail = ("no trade pack recognised this drawing, so nothing was "
+                      "quantified. X-Ray measures: "
+                      f"{', '.join(trades) if trades else 'no trades (none registered)'}. "
+                      "The entities and dimension checks in this takeoff are still "
+                      "valid evidence — only the quantity step was skipped.")
+        all_checks.append(Check(id="chk-pack-coverage", kind="pack-coverage",
+                                status="flag", detail=detail))
 
     review = []
     for q in quantities:
