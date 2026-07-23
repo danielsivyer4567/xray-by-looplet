@@ -109,7 +109,14 @@ GitHub: `github.com/danielsivyer4567/xray-by-looplet` and
   NB: viewer's WebGL couldn't be eyeballed here (in-app preview only runs JS for
   in-project files and the pane hung); it's adapted from the proven WTC viewer +
   unit-verified self-contained/round-trip.
-- Tests: **349 pytest + 10 host-kit**, green. Parity re-frozen after the fencing
+- **Bad-input handling BUILT** (`src/xray/preflight.py`): every caller of
+  `engine.run` gets a typed `InputError` (empty / oversized / wrong-format via
+  magic bytes / password-protected / corrupt) instead of a parser traceback; the
+  CLI prints one line and exits 2. Plus a **DXF provenance flag**: a plot
+  flattened into a DXF (`fixtures/negative/shed-flattened-from-pdf.dxf`) is now
+  flagged (`provenance` check → review) rather than silently ingested as
+  confident nonsense; real CAD files are untouched. 13 tests.
+- Tests: **371 pytest + 10 host-kit**, green. Parity re-frozen after the fencing
   pack (warehouse's empty-takeoff message now lists `fencing` as a measurable
   trade — the only byte change; shed/electrical untouched).
 
@@ -163,7 +170,7 @@ GitHub: `github.com/danielsivyer4567/xray-by-looplet` and
 
 - `python` on PATH is the **hermes-agent venv**; `python -m xray` needs
   `PYTHONPATH=src`. No `openpyxl`, no `poppler` there (don't install into it).
-- Run the suite: `set PYTHONPATH=src && python -m pytest tests -q` → 349.
+- Run the suite: `set PYTHONPATH=src && python -m pytest tests -q` → 371.
 - Rebuild the frozen engine: `powershell -File desktop\scripts\build-engine.ps1`.
 - Electron: `unset ELECTRON_RUN_AS_NODE` before `npx electron .` or it won't boot.
 - Ports: `:8000` is taken by an unrelated service here; `:5173` by another Vite.

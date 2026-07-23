@@ -233,7 +233,7 @@ prototype, not something the codebase generates.)*
 
 ## Session additions (2026-07-23) — geometry packs, graph, wireframe, costing
 
-Test count now **349** (was 305). Parity: `warehouse-design21` was re-frozen
+Test count now **371** (was 305). Parity: `warehouse-design21` was re-frozen
 because its empty-takeoff `pack-coverage` message now lists `fencing` among the
 measurable trades (the only byte change; shed + electrical untouched).
 
@@ -276,3 +276,19 @@ measurable trades (the only byte change; shed + electrical untouched).
   all flag `needs-human`, rate null. `as_of` is explicit (never "today" ->
   reproducible). Exports `to_csv` (Excel) + `quote_html`. CLI
   `python -m pricing.costing`. 12 tests.
+- **Bad-input boundary** (`preflight.py`, engine-level; distinct from the
+  network-facing `server/hardening.py`). `check_input(path, max_bytes=300MB) ->
+  adapter` raises a typed `InputError(kind, detail)` — kind ∈ {not-found, empty,
+  too-large, unsupported, malformed, encrypted, unreadable} — for empty /
+  oversized / wrong-format (magic bytes) / password-protected / corrupt files,
+  before any parser runs. `engine.run` calls it first and wraps `adapter.read`
+  so a parser failure surfaces as `InputError`, never a traceback. `cli.py`
+  prints a one-line reason and returns exit 2 (1 for not-found). 13 tests.
+- **DXF provenance flag.** A plot flattened into a DXF container parses cleanly
+  but has no CAD semantics; `sources/dxf.py` sets `ReadResult.provenance =
+  {suspect, reasons}` when the structural signature holds (no INSERTs AND no
+  DIMENSIONs AND has loose geometry; `$LASTSAVEDBY==ezdxf` only corroborates,
+  never triggers alone — the repo's own fixtures are ezdxf-authored). `engine.run`
+  emits a `provenance` flag check (new schema kind) that reaches `review[]`, so
+  `fixtures/negative/shed-flattened-from-pdf.dxf` is flagged not ingested. Real
+  fixtures are untouched. `Measure`/`ReadResult` gained `id`/`provenance` fields.
