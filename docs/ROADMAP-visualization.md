@@ -101,6 +101,39 @@ Only now does the heavy renderer enter. **Presentation only.**
 - [ ] Keep a component→pixel mapping if feasible (render IDs / object masks), so
       even the final image can point back at the graph. Nice-to-have, not a gate.
 
+### Build it like a ledger, not in one shot
+
+The graph already decomposes the building into small, exactly-specified pieces —
+so build the model the way an LLM works a ledger: many bounded slices, each
+completed and checkpointed on its own, then stitched, rather than one monolithic
+scene the GPU must hold all at once.
+
+This falls straight out of Phase 1. Every graph node is a slice with
+**millimetre-precise geometry and a fixed world position**, which is exactly
+what makes a slice independently buildable: nothing about column 147 depends on
+column 148 having been placed first, because both know precisely where they go.
+
+- [ ] Treat each component (or assembly, or floor) as a ledger slice: build →
+      verify against its graph node → save → move on. The slice boundary is the
+      graph edge, so the decomposition is free.
+- [ ] Checkpoint per slice. A staged import (USD sublayers, or per-floor
+      Datasmith batches) means a crash or a change re-runs one slice, not the
+      whole 110-storey model. Same reason a ledger persists to disk: resumable.
+- [ ] Stitch by shared coordinates. Because positions are absolute and exact,
+      slices assemble without a global solve — piece N drops into place because
+      its mm coordinates say where, not because it was fitted to its neighbours.
+- [ ] Keep the GPU working on one slice at a time. The weight comes off because
+      the renderer never needs the entire structure resident — it composites
+      staged, pre-built pieces, the way a ledger never holds every task in
+      context at once.
+- [ ] Cache aggressively: an unchanged slice's built geometry and its render are
+      reusable across runs (same input → same output, at the slice level). Only
+      changed slices rebuild — the parity idea applied to build artifacts.
+
+The precision is what unlocks all of this. Vague geometry would force a global
+fit-up and defeat the staging; mm-exact coordinates make every slice
+self-contained, which is the whole point of a ledger.
+
 ### Honest unknowns for Phase 3
 
 Worth stating so nobody is surprised later:
