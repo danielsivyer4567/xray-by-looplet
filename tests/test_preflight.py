@@ -125,3 +125,30 @@ def test_real_cad_files_are_not_flagged():
     for name in ("architectural_test_fixtures_v2.dxf", "fencing-boundary.dxf"):
         r = engine.run(str(REPO / "fixtures" / "cad" / name))
         assert not [c for c in r["checks"] if c["kind"] == "provenance"], name
+
+
+def test_polyline_columns_on_a_trade_layer_are_not_flagged(tmp_path):
+    """Regression (a real WTC floor plan tripped this): a legitimate drawing can
+    have components as POLYLINES (not blocks) and no DIMENSION entities. The
+    trade-semantic layer name is what proves it real — it must NOT be flagged as
+    a flattened plot, while the same geometry on a generic layer still is."""
+    ezdxf = pytest.importorskip("ezdxf")
+
+    def _dxf(layer):
+        doc = ezdxf.new("R2010")
+        doc.header["$INSUNITS"] = 5
+        doc.layers.add(layer)
+        msp = doc.modelspace()
+        for i in range(3):  # column footprints as closed polylines, no blocks/dims
+            x = i * 1000.0
+            msp.add_lwpolyline([(x, 0), (x + 50, 0), (x + 50, 50), (x, 50)],
+                               close=True, dxfattribs={"layer": layer})
+        p = tmp_path / f"{layer}.dxf"
+        doc.saveas(p)
+        return p
+
+    real = engine.run(str(_dxf("PERIMETER_COLUMNS")))   # trade-semantic layer
+    assert not [c for c in real["checks"] if c["kind"] == "provenance"]
+
+    generic = engine.run(str(_dxf("GEOMETRY")))          # generic bucket -> flatten
+    assert [c for c in generic["checks"] if c["kind"] == "provenance"]

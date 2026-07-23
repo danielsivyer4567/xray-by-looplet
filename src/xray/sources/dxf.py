@@ -291,17 +291,20 @@ class DxfAdapter(SourceAdapter):
         # DXF container (see fixtures/negative/README.md)? A flattened plot has
         # no blocks to count and no DIMENSION entities it measured — every tell
         # below is sufficient on its own, so any one flags the file.
-        # The structural signature stands on its own: a flattened plot has no
-        # blocks to count and no DIMENSION entities it measured, just loose
-        # strokes. $LASTSAVEDBY == ezdxf is only CORROBORATING — legitimate CAD
-        # is routinely exported through ezdxf (this repo's own fixtures are), so
-        # it can never trigger the flag alone, only reinforce the structural tell.
+        # A flattened plot has no blocks to count, no DIMENSION entities, AND no
+        # trade semantics — just loose strokes on generic buckets (0/GEOMETRY/
+        # TEXT). A real drawing can also lack blocks and dimensions (components
+        # drawn as polylines), so the deciding tell is the LAYERS: if any
+        # geometry sits on a recognised trade layer (PERIMETER_COLUMNS, WALL,
+        # ROOF…), it is a real drawing, not a flatten. $LASTSAVEDBY == ezdxf only
+        # corroborates — legitimate CAD is routinely exported through ezdxf.
         reasons = []
         n_dims = sum(1 for g in geometry if g.kind == "dimension")
-        if not symbols and n_dims == 0 and geometry:
-            reasons.append("no blocks (INSERTs) and no DIMENSION entities, yet "
-                           f"{len(geometry)} loose line/polyline(s) — the signature "
-                           "of a flattened plot with no counts or measured dimensions")
+        has_trade_layer = any(getattr(g, "trade", "") for g in geometry)
+        if not symbols and n_dims == 0 and geometry and not has_trade_layer:
+            reasons.append("no blocks (INSERTs), no DIMENSION entities, and no "
+                           f"trade-semantic layers, yet {len(geometry)} loose "
+                           "line/polyline(s) — the signature of a flattened plot")
             if str(doc.header.get("$LASTSAVEDBY", "") or "").strip().lower() == "ezdxf":
                 reasons.append("and $LASTSAVEDBY is 'ezdxf' (machine-written, not "
                                "saved by a CAD application)")
