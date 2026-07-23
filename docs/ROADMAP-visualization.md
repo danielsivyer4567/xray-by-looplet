@@ -108,6 +108,12 @@ so build the model the way an LLM works a ledger: many bounded slices, each
 completed and checkpointed on its own, then stitched, rather than one monolithic
 scene the GPU must hold all at once.
 
+This borrows the *logic* of ledger decomposition, not the tooling. It does not
+use the autopro or work skills or any agent runner — the render pipeline is
+ordinary deterministic build code. "Like a ledger" is the design principle
+(bounded, checkpointed, resumable, stitched by exact position), applied by hand
+in the build system, not an autonomous agent loop.
+
 This falls straight out of Phase 1. Every graph node is a slice with
 **millimetre-precise geometry and a fixed world position**, which is exactly
 what makes a slice independently buildable: nothing about column 147 depends on
