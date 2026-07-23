@@ -168,7 +168,8 @@ no type-checking framework. Tests: pytest, fixtures referenced relative to repo 
   mode degrades to a human-review flag, never a wrong pass or quantity.
 - A handful of small-dim near-miss flags of the same class appear on both
   fixtures (all review-tier, none false passes).
-- No warehouse/industrial quantity rule pack yet (by design; shed pack only).
+- No warehouse/industrial quantity rule pack yet (by design). Trade packs so far:
+  shed, electrical, fencing (see the 2026-07-23 additions below).
 
 ## PDF backend swap: PyMuPDF -> pypdfium2 (2026-07-20)
 
@@ -229,3 +230,49 @@ prototype, not something the codebase generates.)*
   (`server/quote_lines.py`) unchanged.
 - Schema: quantity `unit` enum extended (VA/kVA/A/kW); page `scale` gains
   optional `verified`.
+
+## Session additions (2026-07-23) — geometry packs, graph, wireframe, costing
+
+Test count now **349** (was 305). Parity: `warehouse-design21` was re-frozen
+because its empty-takeoff `pack-coverage` message now lists `fencing` among the
+measurable trades (the only byte change; shed + electrical untouched).
+
+- **PackContext gains `symbols` + `geometry`** (`packs.py`, additive with
+  `field(default_factory=list)`). `engine.run` passes `read.symbols` /
+  `read.geometry`. Text/table packs (shed, electrical) ignore them; a
+  geometry-driven pack consumes them. Does not change any PDF-path output.
+- **Fencing pack** (`packs_fencing.py`) — the first geometry-driven trade.
+  `detect`: any LINE/LWPOLYLINE on a layer matching `/FENC/i`, or a POST/GATE
+  block on such a layer. `quantify`: fence run length (lm) = summed runs
+  converted to metres by the resolved unit (`UNIT_TO_M`; unresolved unit ->
+  needs-human, never a guessed scale); posts = **reconciled** when placed POST
+  blocks equal the spacing estimate `floor(L/2.4)+1`, **single-source + flagged
+  `count` check** when they disagree, **needs-human** when derived from the 2.4 m
+  spacing ASSUMPTION alone; gates = exact count of GATE blocks. Panels/rails/
+  footings deliberately NOT emitted (need the fence system). Fixture
+  `fixtures/cad/fencing-boundary.dxf` (gen `tools/make_fencing_fixture.py`):
+  48.0 lm run, 21 posts, 1 gate — exact by construction. 10 tests.
+- **Building graph** (`graph.py`, visualization Phase 1). `build_graph(takeoff,
+  annotations=None) -> graph` — a VIEW of a takeoff, no re-reading the drawing.
+  Nodes: `type` (god node per block name, count = placements), `component` (per
+  placement, carries evidence), `measure`, `quantity`. Edges: `instance-of`,
+  `member-of` (the assembly DAG), `evidenced-by`. Deterministic + never mutates
+  the takeoff; annotations are metadata, never evidence. Queries:
+  `count_by_type`, `nodes_of_type`, `neighbours`, `bill_of_materials`.
+  `render_html` = self-contained offline view. CLI `python -m xray.graph`.
+  12 tests.
+- **Wireframe** (`wireframe.py`, visualization Phase 2). `build_scene(takeoff,
+  heights=None, default_height=None) -> scene`: one vertical element per placed
+  component at its measured (x,y), tagged with its graph node id. x,y faithful;
+  height `given` if supplied, else an ASSUMED viewing value flagged
+  `needs-human` (never a quantity). `roundtrip_check(scene, takeoff)` re-derives
+  counts from the scene and gates them against the takeoff. `render_html` =
+  self-contained WebGL viewer. CLI `python -m xray.wireframe`. 10 tests.
+- **Costing** (`pricing/costing.py`, P2 — NO LLM). `load_price_list(csv)` reads
+  the `templates/price-list.template.csv` shape. `cost_takeoff(quantities,
+  price_rows, as_of=None, freshness_days=None, region=None) -> {lines, summary}`:
+  joins on item/alias + unit (unit is a hard gate via `mapping.units_compatible`),
+  multiplies, stamps provenance. Unmatched / ambiguous / stale / POA / wrong-unit
+  all flag `needs-human`, rate null. `as_of` is explicit (never "today" ->
+  reproducible). Exports `to_csv` (Excel) + `quote_html`. CLI
+  `python -m pricing.costing`. 12 tests.
