@@ -130,11 +130,14 @@ GitHub: `github.com/danielsivyer4567/xray-by-looplet` and
   in PDF points tagged `source="ocr"`. Deterministic + tested (render, conversion,
   `StubBackend` round-trip, `TesseractBackend` errors clearly when absent).
   **No OCR engine ships/installed here** — Tesseract activates when present,
-  PaddleOCR fits the same interface. **NOT wired into `engine.run`** (would change
-  raster output → parity); that opt-in integration + a real scanned fixture with
-  hand-proven ground truths is the next slice. Reality: clean scans achievable, a
-  glare-y phone photo (Daniel's survey) is much harder. 7 tests.
-- Tests: **388 pytest + 10 host-kit**, green. Parity re-frozen after the fencing
+  PaddleOCR fits the same interface. **WIRED into `engine.run` as OPT-IN**:
+  `run(pdf, ocr=True)` auto-detects an installed engine (raises if none) or pass
+  an `OcrBackend`; `--ocr` CLI flag. Default off → byte-identical (parity safe);
+  fires only on **raster/sparse PDF pages**, never vector pages or DXF. Still
+  needs a real engine installed + a **scanned fixture with hand-proven ground
+  truths** to prove end-to-end recognition. Reality: clean scans achievable, a
+  glare-y phone photo (Daniel's survey) is much harder. 12 tests (7 unit + 5 wire).
+- Tests: **393 pytest + 10 host-kit**, green. Parity re-frozen after the fencing
   pack (warehouse's empty-takeoff message now lists `fencing` as a measurable
   trade — the only byte change; shed/electrical untouched).
 
@@ -188,7 +191,7 @@ GitHub: `github.com/danielsivyer4567/xray-by-looplet` and
 
 - `python` on PATH is the **hermes-agent venv**; `python -m xray` needs
   `PYTHONPATH=src`. No `openpyxl`, no `poppler` there (don't install into it).
-- Run the suite: `set PYTHONPATH=src && python -m pytest tests -q` → 388.
+- Run the suite: `set PYTHONPATH=src && python -m pytest tests -q` → 393.
 - Rebuild the frozen engine: `powershell -File desktop\scripts\build-engine.ps1`.
 - Electron: `unset ELECTRON_RUN_AS_NODE` before `npx electron .` or it won't boot.
 - Ports: `:8000` is taken by an unrelated service here; `:5173` by another Vite.

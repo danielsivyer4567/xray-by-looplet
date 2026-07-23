@@ -233,7 +233,7 @@ prototype, not something the codebase generates.)*
 
 ## Session additions (2026-07-23) — geometry packs, graph, wireframe, costing
 
-Test count now **388** (was 305). Parity: `warehouse-design21` was re-frozen
+Test count now **393** (was 305). Parity: `warehouse-design21` was re-frozen
 because its empty-takeoff `pack-coverage` message now lists `fencing` among the
 measurable trades (the only byte change; shed + electrical untouched).
 
@@ -315,7 +315,11 @@ measurable trades (the only byte change; shed + electrical untouched).
   tesseract binary exist, else raises a clear install message; PaddleOCR fits the
   same interface). `available_backend()` returns a real backend or None. Rendering
   + conversion + the source tag are tested; **recognition is the backend's job and
-  no engine is bundled.** Deliberately **NOT wired into `engine.run`** — enabling
-  OCR on raster pages changes their output and would break the byte-identity gate,
-  so it must be opt-in; that integration + a scanned fixture with hand-proven
-  ground truths is a future slice. 7 tests.
+  no engine is bundled.** **Wired into `engine.run(pdf, ocr=...)` as OPT-IN**
+  (`engine.OCR_DPI`, `engine._resolve_ocr`): `ocr=True` auto-detects an installed
+  engine (raises `RuntimeError` if none) or pass an `OcrBackend`; the CLI has
+  `--ocr`. Default `None` → byte-identical output, so the parity gate holds; OCR
+  fires ONLY on `raster`/`sparse` PDF pages (never vector pages or DXF), and the
+  recovered words join the pipeline tagged `source="ocr"` and bump the coverage
+  denominator. A scanned fixture with hand-proven ground truths (to prove real
+  end-to-end recognition) is still a future slice. 12 tests (7 unit + 5 wire).
