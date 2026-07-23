@@ -152,6 +152,16 @@ def test_fence_takeoff_graph_has_measure_and_quantity_nodes():
 
 # --------------------------------------------------------------------- html
 
+def test_geometry_quantity_traces_to_its_measure_node():
+    """A fence-length quantity built from a run must edge to that run's measure
+    node — geometry-derived numbers are now traceable in the graph, not orphans."""
+    g = build_graph(run(str(FENCE)))
+    ev = [o for r, o in neighbours(g, "qty:q-fence-length") if r == "evidenced-by"]
+    assert ev, "fence-length must edge to the run it measured"
+    assert all(_node(g, e) is not None and _node(g, e)["type"] == "measure"
+               for e in ev)
+
+
 def test_html_is_self_contained_and_shows_counts(graph):
     html = render_html(graph)
     assert html.startswith("<!doctype html>")

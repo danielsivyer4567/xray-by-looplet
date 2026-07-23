@@ -101,6 +101,25 @@ def _post(i, layer="FENCE"):
     return Symbol(block_name="POST", layer=layer, x=float(i), y=0.0, id=f"post-{i}")
 
 
+def test_geometry_quantities_cite_the_run_as_evidence(result):
+    """The fence length is built from a drawn run, so it must cite that run's id
+    — 'every number re-derives from evidence' has to hold for geometry too."""
+    q = _q(result, "q-fence-length")
+    assert q["evidence"], "fence length must cite the run it measured"
+
+
+def test_derived_posts_formula_is_self_consistent_for_unequal_runs():
+    """The stated formula must reproduce its own result, even for unequal runs —
+    5 m + 7 m at 2.4 m centres = 3 + 3 = 6, and the string must say so."""
+    a, b = _run(value=5.0), _run(value=7.0)
+    a.id, b.id = "r1", "r2"
+    quants, _ = FencingPack().quantify(_ctx(geometry=[a, b]))
+    posts = next(q for q in quants if q.id == "q-fence-posts")
+    assert posts.qty == 6.0
+    assert posts.formula == "floor(5/2.4)+1 + floor(7/2.4)+1 = 6"
+    assert posts.evidence == ["r1", "r2"]
+
+
 def test_derived_posts_without_placements_are_needs_human():
     """No posts drawn: the count rests on a 2.4 m spacing ASSUMPTION, so it is
     needs-human and the assumption is stated in the notes."""

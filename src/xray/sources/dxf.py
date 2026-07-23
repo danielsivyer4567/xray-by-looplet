@@ -226,9 +226,12 @@ class DxfAdapter(SourceAdapter):
         # every placement at every depth — see expand_inserts
         symbols.extend(expand_inserts(msp, all_blocks))
 
-        for e in msp:
+        for gi, e in enumerate(msp):
             t = e.dxftype()
             layer = getattr(e.dxf, "layer", "") or ""
+            # the entity handle is a stable per-file id; fall back to the read
+            # ordinal so every run is still citable as evidence.
+            mid = str(getattr(e.dxf, "handle", "") or "") or f"g{gi}"
             try:
                 if t == "DIMENSION":
                     # the measured span comes from the geometry, never from the
@@ -246,12 +249,12 @@ class DxfAdapter(SourceAdapter):
                         text_value=tv,
                         conflict=(tv is not None and
                                   abs(tv - measured) > max(1e-6, abs(measured) * 1e-6)),
-                        trade=trade_for(layer)))
+                        trade=trade_for(layer), id=mid))
                 elif t == "LINE":
                     a, b = e.dxf.start, e.dxf.end
                     geometry.append(Measure(
                         kind="line", value=math.dist((a.x, a.y), (b.x, b.y)),
-                        layer=layer, trade=trade_for(layer)))
+                        layer=layer, trade=trade_for(layer), id=mid))
                 elif t == "LWPOLYLINE":
                     pts = [(p[0], p[1]) for p in e.get_points("xy")]
                     if e.closed and len(pts) > 2:
@@ -260,7 +263,7 @@ class DxfAdapter(SourceAdapter):
                                 for i in range(len(pts) - 1))
                     geometry.append(Measure(
                         kind="polyline", value=total, layer=layer,
-                        trade=trade_for(layer)))
+                        trade=trade_for(layer), id=mid))
             except Exception:
                 continue   # one malformed entity never fails the whole read
 

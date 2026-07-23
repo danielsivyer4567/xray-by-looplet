@@ -9,8 +9,9 @@ and `ctx.symbols` for placed posts/gates.
 What it emits, and how honest each number is:
 
   fence run length (lm)  — summed drawn runs, converted to metres by the resolved
-                           unit. Single-source (the drawing states it once); it
-                           reconciles only if a fence-layer DIMENSION confirms it.
+                           unit, citing each run as evidence. Single-source: the
+                           drawing states it once (no independent dimension
+                           cross-check yet).
   posts (ea)             — the trust tier depends on the evidence:
                              * placed POST blocks AND they equal the spacing
                                estimate      -> reconciled
@@ -105,6 +106,7 @@ class FencingPack(Pack):
         total_m = round(sum(x for x in lengths if x is not None), 3)
         n_runs = len(runs)
 
+        run_ev = [g.id for g in runs if getattr(g, "id", "")]
         if runs:
             if unresolved:
                 quants.append(Quantity(
@@ -112,7 +114,7 @@ class FencingPack(Pack):
                     qty=total_m, unit="lm",
                     formula=(f"sum of {n_runs} drawn run(s); some runs had no "
                              f"resolvable unit and are excluded"),
-                    tier="needs-human", evidence=[],
+                    tier="needs-human", evidence=run_ev,
                     notes=("a fence run had no resolvable drawing unit, so this "
                            "length is incomplete — set the DXF units / page scale "
                            "and re-run")))
@@ -121,7 +123,7 @@ class FencingPack(Pack):
                     id="q-fence-length", trade="fencing", item="fence line",
                     qty=total_m, unit="lm",
                     formula=f"sum of {n_runs} drawn fence run(s) = {total_m} lm",
-                    tier="single-source", evidence=[],
+                    tier="single-source", evidence=run_ev,
                     notes=("fence system not specified — panels/palings, rails, "
                            "footings and concrete are NOT quantified; provide the "
                            "system (paling / Colorbond / chainmesh) for a full BOM")))
@@ -130,10 +132,10 @@ class FencingPack(Pack):
         placed = _fence_symbols(symbols, RE_POST)
         derived = None
         if runs and not unresolved:
-            # one continuous run contributes floor(L/spacing) intervals + 1 post;
-            # each additional disconnected run adds its own closing post.
-            derived = sum(int(_run_metres(g) / DEFAULT_POST_SPACING_M + 1e-9)
-                          for g in runs) + n_runs
+            # each continuous run contributes floor(L/spacing) intervals + 1 post
+            # (_posts_for_run); disconnected runs simply add their own posts.
+            derived = sum(_posts_for_run(_run_metres(g), DEFAULT_POST_SPACING_M)
+                          for g in runs)
 
         if placed:
             n = len(placed)
@@ -159,12 +161,16 @@ class FencingPack(Pack):
                 formula=f"count of placed POST blocks = {n}",
                 tier=tier, evidence=[s.id for s in placed], notes=notes))
         elif derived is not None:
+            # formula built from the per-run terms so the stated arithmetic
+            # reproduces the result exactly, even for unequal runs.
+            terms = " + ".join(
+                f"floor({_run_metres(g):g}/{DEFAULT_POST_SPACING_M:g})+1"
+                for g in runs)
             quants.append(Quantity(
                 id="q-fence-posts", trade="fencing", item="fence posts",
                 qty=float(derived), unit="ea",
-                formula=(f"{total_m} lm / {DEFAULT_POST_SPACING_M:g} m centres + "
-                         f"{n_runs} end post(s) = {derived}"),
-                tier="needs-human", evidence=[],
+                formula=f"{terms} = {derived}",
+                tier="needs-human", evidence=run_ev,
                 notes=(f"no posts drawn — count ASSUMES {DEFAULT_POST_SPACING_M:g} m "
                        "centres; confirm spacing and corner/end posts before ordering")))
 

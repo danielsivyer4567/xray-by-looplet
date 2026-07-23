@@ -26,6 +26,7 @@ from datetime import date
 from pathlib import Path
 
 from pricing.mapping import tokens, units_compatible
+from xray.htmlutil import esc
 
 
 @dataclass
@@ -83,14 +84,22 @@ def _match_score(qty_item: str, row: PriceRow) -> float:
     return best
 
 
-def _stale(row: PriceRow, as_of: str | None, freshness_days: int | None) -> bool:
-    if as_of is None or freshness_days is None or not row.effective_date:
-        return False
+def _freshness(row: PriceRow, as_of: str | None,
+               freshness_days: int | None) -> str:
+    """Freshness verdict when a window is in force: 'ok' | 'stale' | 'unknown'.
+
+    'unknown' covers a missing OR unparseable date — uncertain age must flag
+    `needs-human`, never quietly price (law 2). With no window set, dates are
+    irrelevant and everything is 'ok'."""
+    if as_of is None or freshness_days is None:
+        return "ok"
+    if not row.effective_date:
+        return "unknown"
     try:
         age = (date.fromisoformat(as_of) - date.fromisoformat(row.effective_date)).days
     except ValueError:
-        return False
-    return age > freshness_days
+        return "unknown"
+    return "stale" if age > freshness_days else "ok"
 
 
 @dataclass
@@ -166,12 +175,21 @@ def cost_takeoff(quantities, price_rows, as_of=None, freshness_days=None,
                                   supplier=row.supplier, price_date=row.effective_date,
                                   reason="matched row is POA / has no price"))
             continue
-        if _stale(row, as_of, freshness_days):
+        fresh = _freshness(row, as_of, freshness_days)
+        if fresh == "stale":
             lines.append(CostLine(
                 qid, item, unit, qty, "needs-human",
                 supplier=row.supplier, price_date=row.effective_date,
                 reason=(f"matched price dated {row.effective_date} is older than "
                         f"the {freshness_days}-day window (as of {as_of})")))
+            continue
+        if fresh == "unknown":
+            lines.append(CostLine(
+                qid, item, unit, qty, "needs-human",
+                supplier=row.supplier, price_date=row.effective_date,
+                reason=(f"a {freshness_days}-day freshness window is set but the "
+                        f"matched row's date ({row.effective_date or 'missing'!r}) "
+                        "cannot be read — age unknown, not priced")))
             continue
 
         amount = round(qty * row.price, 2)
@@ -221,10 +239,6 @@ _TIER = {"priced": "#1a7f37", "needs-human": "#cf222e"}
 def quote_html(result: dict, title: str = "Quote draft") -> str:
     """A presentation layer prettier than a spreadsheet: self-contained, offline,
     light/dark. The numbers are exactly the costing result — nothing recomputed."""
-    def esc(s):
-        return (str(s).replace("&", "&amp;").replace("<", "&lt;")
-                .replace(">", "&gt;"))
-
     rows = []
     for ln in result["lines"]:
         col = _TIER.get(ln["status"], "#57606a")

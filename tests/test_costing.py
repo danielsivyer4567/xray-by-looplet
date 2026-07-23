@@ -131,6 +131,32 @@ def test_determinism():
     assert a == b
 
 
+def test_unreadable_date_under_a_window_flags_not_prices():
+    """An unparseable effective_date under a freshness window has UNKNOWN age —
+    it must flag needs-human, never silently price (the caught law-2 bug)."""
+    rows = [PriceRow("gates", [], "ea", 480.0, "July 2026", "QLD-SE", "S")]
+    r = cost_takeoff([{"id": "g", "item": "gates", "unit": "ea", "qty": 1}], rows,
+                     as_of="2026-09-01", freshness_days=30)
+    ln = _line(r, "g")
+    assert ln["status"] == "needs-human" and ln["amount"] is None
+    assert "cannot be read" in ln["reason"]
+
+
+def test_missing_date_under_a_window_flags():
+    rows = [PriceRow("gates", [], "ea", 480.0, "", "QLD-SE", "S")]
+    r = cost_takeoff([{"id": "g", "item": "gates", "unit": "ea", "qty": 1}], rows,
+                     as_of="2026-09-01", freshness_days=30)
+    assert _line(r, "g")["status"] == "needs-human"
+
+
+def test_undated_price_is_fine_when_no_window_is_set():
+    """With no freshness window, dates are irrelevant — an undated price still
+    costs normally (the gate is off, not failing open on age)."""
+    rows = [PriceRow("gates", [], "ea", 480.0, "", "QLD-SE", "S")]
+    r = cost_takeoff([{"id": "g", "item": "gates", "unit": "ea", "qty": 1}], rows)
+    assert _line(r, "g")["status"] == "priced" and _line(r, "g")["amount"] == 480.0
+
+
 def test_exports_are_self_contained():
     r = cost_takeoff(QUANTITIES, load_price_list(PRICES))
     csv_text = to_csv(r)

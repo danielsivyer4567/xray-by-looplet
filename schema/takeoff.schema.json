@@ -153,6 +153,7 @@
         "type": "object",
         "required": ["kind", "value"],
         "properties": {
+          "id": { "type": "string" },
           "kind": { "enum": ["dimension", "line", "polyline"] },
           "value": { "type": "number" },
           "layer": { "type": "string" },

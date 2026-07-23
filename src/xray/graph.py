@@ -28,6 +28,8 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 
+from xray.htmlutil import esc as _esc
+
 GRAPH_VERSION = "0.1"
 
 
@@ -77,12 +79,14 @@ def build_graph(takeoff: dict, annotations: dict | None = None) -> dict:
         edges.append({"from": nid, "to": f"type:{s['blockName']}",
                       "rel": "instance-of"})
 
-    # ---- measure nodes: geometry has no engine id, so index deterministically
+    # ---- measure nodes: key on the run's own id so a quantity built from a run
+    # can edge to it; fall back to an index when the source supplied none.
     for i, g in enumerate(geometry):
-        add(f"geo-{i}", type="measure", kind=g.get("kind", ""),
+        gid = g.get("id") or f"geo-{i}"
+        add(gid, type="measure", kind=g.get("kind", ""),
             label=f"{g.get('kind', '')} {g.get('value')}", value=g.get("value"),
             unit=g.get("unit", ""), layer=g.get("layer", ""),
-            trade=g.get("trade", ""), evidence=[])
+            trade=g.get("trade", ""), evidence=[gid])
 
     # ---- quantity nodes: the bill, edged back to its evidence ---------------
     for q in quantities:
@@ -267,11 +271,6 @@ def render_html(graph: dict, title: str = "Building graph") -> str:
   <tbody>{''.join(bom_rows) or '<tr><td colspan="5">empty</td></tr>'}</tbody>
 </table></div>
 </body></html>"""
-
-
-def _esc(s: str) -> str:
-    return (str(s).replace("&", "&amp;").replace("<", "&lt;")
-            .replace(">", "&gt;").replace('"', "&quot;"))
 
 
 # ------------------------------------------------------------------------ cli

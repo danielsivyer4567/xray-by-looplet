@@ -26,6 +26,8 @@ from __future__ import annotations
 import json
 from collections import Counter
 
+from xray.htmlutil import esc as _esc
+
 SCENE_VERSION = "0.1"
 
 # a small, fixed palette cycled by sorted type index — deterministic colour.
@@ -52,7 +54,9 @@ def build_scene(takeoff: dict, heights: dict | None = None,
     if default_height is None:
         span = max((max(xs) - min(xs)) if xs else 0.0,
                    (max(ys) - min(ys)) if ys else 0.0)
-        default_height = span * 0.6 if span else 1.0
+        # a modest fraction of the plan extent — enough to read as 3D without
+        # towering over an elongated layout. Arbitrary and flagged, never a fact.
+        default_height = span * 0.25 if span else 1.0
 
     types = sorted({s["blockName"] for s in symbols})
     colour = {name: _PALETTE[i % len(_PALETTE)] for i, name in enumerate(types)}
@@ -88,8 +92,9 @@ def build_scene(takeoff: dict, heights: dict | None = None,
             "units": (takeoff.get("document", {}).get("units") or {}).get("resolved", ""),
         },
         "meta": {
-            "heightBasis": "given" if heights and not assumed_any else "assumed",
-            "assumedHeight": default_height,
+            "heightBasis": ("given" if heights and not assumed_any else "assumed"),
+            # only meaningful when some element used it; null when all heights given
+            "assumedHeight": (default_height if assumed_any else None),
             "note": ("x,y are measured; height is an assumed viewing value and is "
                      "flagged on every un-supplied element — never a quantity"),
         },
@@ -232,11 +237,6 @@ document.querySelectorAll('.ty').forEach(b=>b.onclick=()=>{{const t=b.dataset.ty
 frame();
 }}
 </script></body></html>"""
-
-
-def _esc(s: str) -> str:
-    return (str(s).replace("&", "&amp;").replace("<", "&lt;")
-            .replace(">", "&gt;").replace('"', "&quot;"))
 
 
 def main(argv=None) -> int:

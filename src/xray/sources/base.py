@@ -120,6 +120,10 @@ class Measure:
     unit: str = ""           # resolved unit, "" when unresolved
     text: str = ""           # raw dim text; "<>" means derived, never typed
     trade: str = ""
+    # Stable per-run identity so a quantity built from this run can cite it as
+    # evidence (the entity handle from the source file; deterministic per file).
+    # "" for adapters that cannot supply one.
+    id: str = ""
 
     # An override dimension states a number the geometry does not support. BOTH
     # are kept: `value` is what the drawing measures, `text_value` is what it
