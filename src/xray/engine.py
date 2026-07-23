@@ -36,6 +36,24 @@ import xray.packs_fencing  # noqa: F401  (registers FencingPack)
 # human look ("read 94%, here's the 6% I couldn't") — a diagnostic, not a gate.
 COVERAGE_MIN = 0.15
 
+# render DPI for OCR'd pages (opt-in). 200 balances small text against speed.
+OCR_DPI = 200
+
+
+def _resolve_ocr(ocr):
+    """Turn the `ocr` argument into a recognition backend, or fail clearly.
+    `True` -> an installed engine (error if none); otherwise assume a backend."""
+    if ocr is True:
+        from xray.ocr import available_backend
+        backend = available_backend()
+        if backend is None:
+            raise RuntimeError(
+                "OCR was requested but no engine is installed — "
+                "pip install pytesseract and the tesseract binary, or pass an "
+                "ocr.OcrBackend instance")
+        return backend
+    return ocr  # an explicit OcrBackend
+
 
 def _sha256(path: Path) -> str:
     h = hashlib.sha256()
@@ -45,12 +63,19 @@ def _sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def run(pdf_path: str, calibrations: dict | None = None) -> dict:
+def run(pdf_path: str, calibrations: dict | None = None, ocr=None) -> dict:
     """Full pipeline. Returns a TakeoffResult dict (see schema).
 
     `calibrations`: optional {page_index (0-based): calibration} where a
     calibration is {"p0":[x,y], "p1":[x,y], "known_mm": float} or
     {"mmPerPt": float}. A calibrated page's scale wins over auto-voting.
+
+    `ocr`: OPT-IN text recognition for scanned/photographed sheets. Default None
+    keeps output byte-identical (the parity gate depends on this). Pass `True` to
+    auto-use an installed engine (raises if none is), or an `ocr.OcrBackend`
+    instance. When on, raster/sparse PDF pages are rendered and recognised, and
+    the words join the pipeline tagged `source="ocr"`. Never touches vector pages
+    or DXF, so a drawing that already has a text layer is unaffected.
 
     Order conversion (measured -> orderable stock) is applied downstream by the
     hardening pass, whose purchase optimiser is xray.orders (one tested kernel).
@@ -75,6 +100,10 @@ def run(pdf_path: str, calibrations: dict | None = None) -> dict:
             f"({type(e).__name__}: {e})") from e
     producer = read.producer
 
+    # OCR is resolved once, up front, so an unavailable engine fails fast rather
+    # than mid-document. Only ever applies to a PDF source (DXF has no raster).
+    ocr_backend = _resolve_ocr(ocr) if ocr else None
+
     pages_meta = []
     all_entities = []
     all_checks: list[Check] = []
@@ -82,6 +111,15 @@ def run(pdf_path: str, calibrations: dict | None = None) -> dict:
     for i, pr in enumerate(read.pages):
         words = pr.words
         n_raw = pr.raw_word_count
+        # OPT-IN OCR: a page with no usable text layer (raster scan / sparse) is
+        # rendered and recognised; the words join the pipeline tagged source=ocr.
+        # Off by default, so a vector page is byte-identical to before.
+        if ocr_backend is not None and adapter.name == "pdf" and pr.kind in ("raster", "sparse"):
+            from xray.ocr import recognize_page
+            ocr_added = recognize_page(p, ocr_backend, i, dpi=OCR_DPI)
+            if ocr_added:
+                words = list(words) + ocr_added
+                n_raw += len(ocr_added)     # coverage counts what OCR recovered
         rect = (pr.width_pt, pr.height_pt)
         entities = classify(words, rect)
         scale = vote_scale(entities, rect, None, (calibrations or {}).get(i))

@@ -29,6 +29,9 @@ def _build_parser() -> argparse.ArgumentParser:
                        help="output directory (default: next to the PDF)")
     run_p.add_argument("--report", action="store_true",
                        help="also write a deterministic HTML quote (no LLM)")
+    run_p.add_argument("--ocr", action="store_true",
+                       help="OCR raster/scanned pages (needs an OCR engine "
+                            "installed, e.g. pytesseract + tesseract)")
     return ap
 
 
@@ -77,11 +80,14 @@ def main(argv=None) -> int:
 
     from xray.preflight import InputError
     try:
-        result = engine.run(str(pdf))
+        result = engine.run(str(pdf), ocr=args.ocr or None)
     except InputError as e:
         # a clear, one-line reason — never a parser traceback
         print(f"error: {e.detail}", file=sys.stderr)
         return 1 if e.kind == "not-found" else 2
+    except RuntimeError as e:  # e.g. --ocr but no engine installed
+        print(f"error: {e}", file=sys.stderr)
+        return 2
 
     json_path = out_dir / f"{pdf.stem}.xray.json"
     marked_path = out_dir / f"{pdf.stem}.marked.pdf"
