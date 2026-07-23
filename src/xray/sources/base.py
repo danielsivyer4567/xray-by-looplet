@@ -153,6 +153,12 @@ class ReadResult:
     # and any conflict is surfaced, never silently propagated.
     units: dict = field(default_factory=dict)     # {declared, resolved, basis, mismatch}
 
+    # File provenance. A valid-but-fake file (e.g. a PDF plot flattened into a
+    # DXF container) parses cleanly yet has no real CAD semantics; the adapter
+    # sets {suspect: bool, reasons: [...]} so the engine can flag it rather than
+    # emit confident nonsense. Empty for adapters that don't assess it.
+    provenance: dict = field(default_factory=dict)
+
 
 class SourceAdapter:
     """One input format. Stateless; `read` must not leak an open document."""

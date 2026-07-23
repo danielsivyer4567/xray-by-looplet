@@ -287,11 +287,32 @@ class DxfAdapter(SourceAdapter):
         pages = [PageRead(words=words, raw_word_count=len(words),
                           width_pt=float(w), height_pt=float(h), kind="vector")]
 
+        # Provenance: is this a native CAD drawing, or a plot flattened into a
+        # DXF container (see fixtures/negative/README.md)? A flattened plot has
+        # no blocks to count and no DIMENSION entities it measured — every tell
+        # below is sufficient on its own, so any one flags the file.
+        # The structural signature stands on its own: a flattened plot has no
+        # blocks to count and no DIMENSION entities it measured, just loose
+        # strokes. $LASTSAVEDBY == ezdxf is only CORROBORATING — legitimate CAD
+        # is routinely exported through ezdxf (this repo's own fixtures are), so
+        # it can never trigger the flag alone, only reinforce the structural tell.
+        reasons = []
+        n_dims = sum(1 for g in geometry if g.kind == "dimension")
+        if not symbols and n_dims == 0 and geometry:
+            reasons.append("no blocks (INSERTs) and no DIMENSION entities, yet "
+                           f"{len(geometry)} loose line/polyline(s) — the signature "
+                           "of a flattened plot with no counts or measured dimensions")
+            if str(doc.header.get("$LASTSAVEDBY", "") or "").strip().lower() == "ezdxf":
+                reasons.append("and $LASTSAVEDBY is 'ezdxf' (machine-written, not "
+                               "saved by a CAD application)")
+        provenance = {"suspect": bool(reasons), "reasons": reasons}
+
         # Producer is the adapter, not $LASTSAVEDBY — CAD files rarely set that
         # header, and the seam needs a stable identity for diagnostics.
         return ReadResult(pages=pages,
                           producer="ezdxf",
-                          symbols=symbols, geometry=geometry, units=units)
+                          symbols=symbols, geometry=geometry, units=units,
+                          provenance=provenance)
 
 
 def block_counts(symbols) -> dict:

@@ -96,7 +96,7 @@
         "required": ["id", "kind", "status", "detail"],
         "properties": {
           "id": { "type": "string" },
-          "kind": { "enum": ["chain-sum", "trig", "cross-sheet", "count", "schedule-match", "dim-override", "pack-coverage", "pack-error"] },
+          "kind": { "enum": ["chain-sum", "trig", "cross-sheet", "count", "schedule-match", "dim-override", "pack-coverage", "pack-error", "provenance"] },
           "status": { "enum": ["pass", "flag"] },
           "detail": { "type": "string" },
           "delta": { "type": ["number", "null"] },

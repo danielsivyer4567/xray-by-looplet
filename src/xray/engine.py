@@ -27,6 +27,7 @@ from xray.packs import PackContext, iter_packs, run_packs
 from xray.quantify import Quantity
 from xray.sources import find_adapter
 from xray.sources.base import SPARSE_WORD_COUNT
+from xray.preflight import check_input, InputError
 import xray.packs_shed  # noqa: F401  (registers ShedPack)
 import xray.packs_electrical  # noqa: F401  (registers ElectricalPack)
 import xray.packs_fencing  # noqa: F401  (registers FencingPack)
@@ -55,9 +56,23 @@ def run(pdf_path: str, calibrations: dict | None = None) -> dict:
     hardening pass, whose purchase optimiser is xray.orders (one tested kernel).
     """
     p = Path(pdf_path)
+    # Bad input is stopped at the door with a clear, typed error rather than a
+    # raw parser traceback (empty / oversized / encrypted / corrupt / wrong
+    # format). check_input returns the adapter it validated.
+    adapter = check_input(p)
     # The adapter owns everything format-specific and returns pure data — it
-    # closes its own document, so nothing below holds a live handle.
-    read = find_adapter(p).read(p)
+    # closes its own document, so nothing below holds a live handle. A parser
+    # failure on a file that passed preflight is still surfaced as InputError,
+    # never a stack trace.
+    try:
+        read = adapter.read(p)
+    except InputError:
+        raise
+    except Exception as e:
+        raise InputError(
+            "unreadable",
+            f"{p.name} could not be parsed as {adapter.name} "
+            f"({type(e).__name__}: {e})") from e
     producer = read.producer
 
     pages_meta = []
@@ -170,6 +185,19 @@ def run(pdf_path: str, calibrations: dict | None = None) -> dict:
                       "valid evidence — only the quantity step was skipped.")
         all_checks.append(Check(id="chk-pack-coverage", kind="pack-coverage",
                                 status="flag", detail=detail))
+
+    # A file that looks like a flattened plot rather than native CAD is flagged
+    # loudly: it has no blocks to count and no dimensions it measured, so any
+    # number derived from it would be confident nonsense. Flag, never silently
+    # ingest (see fixtures/negative/README.md).
+    prov = getattr(read, "provenance", None) or {}
+    if prov.get("suspect"):
+        all_checks.append(Check(
+            id="chk-provenance", kind="provenance", status="flag",
+            detail=("this file looks like a flattened plot, not native CAD ("
+                    + "; ".join(prov.get("reasons", []))
+                    + ") — counts and lengths from it may be unfounded; verify "
+                    "against a file saved by a CAD application")))
 
     review = []
     for q in quantities:

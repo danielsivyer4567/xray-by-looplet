@@ -75,7 +75,13 @@ def main(argv=None) -> int:
     out_dir = Path(args.out) if args.out else pdf.parent
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    result = engine.run(str(pdf))
+    from xray.preflight import InputError
+    try:
+        result = engine.run(str(pdf))
+    except InputError as e:
+        # a clear, one-line reason — never a parser traceback
+        print(f"error: {e.detail}", file=sys.stderr)
+        return 1 if e.kind == "not-found" else 2
 
     json_path = out_dir / f"{pdf.stem}.xray.json"
     marked_path = out_dir / f"{pdf.stem}.marked.pdf"
