@@ -2,7 +2,7 @@
 
 **Sees through plans. PDF in, quantities out.**
 
-Version 0.1.0 · engine id `xray-by-looplet` · Python 3.11 · 117/117 tests passing
+Version 0.1.0 · engine id `xray-by-looplet` · Python 3.11 · 305/305 tests passing
 
 X-Ray by Looplet is a **headless** construction-plan takeoff engine. Feed it a
 plan PDF; it returns a structured `takeoff.json` (typed entities, verification

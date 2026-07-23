@@ -9,7 +9,7 @@ LLM formatter, Excel). **An LLM never produces a quantity, price, or compliance
 verdict** — every number comes from deterministic grammar + geometry + rule
 packs, and carries the formula and evidence that prove it.
 
-Status: **v0.1.0** · two trade packs (steel sheds, electrical) · **117 tests
+Status: **v0.1.0** · two trade packs (steel sheds, electrical) · **305 tests
 passing** · extraction is permissively licensed (pypdfium2 + pikepdf).
 
 ---
@@ -100,7 +100,7 @@ Two points in PDF coordinates + the real distance → exact mm-per-point.
 ## Testing
 
 ```
-set PYTHONPATH=src && python -m pytest tests -q      # expect: 117 passed
+set PYTHONPATH=src && python -m pytest tests -q      # expect: 305 passed
 ```
 The two real plan sets under `fixtures/` are the permanent acceptance suite; the
 ground truths in `tests/` were proven by hand.
