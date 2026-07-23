@@ -233,7 +233,7 @@ prototype, not something the codebase generates.)*
 
 ## Session additions (2026-07-23) — geometry packs, graph, wireframe, costing
 
-Test count now **381** (was 305). Parity: `warehouse-design21` was re-frozen
+Test count now **388** (was 305). Parity: `warehouse-design21` was re-frozen
 because its empty-takeoff `pack-coverage` message now lists `fencing` among the
 measurable trades (the only byte change; shed + electrical untouched).
 
@@ -306,3 +306,16 @@ measurable trades (the only byte change; shed + electrical untouched).
   10 tests (incl. decoding the embedded buffer to verify real coordinates).
   The **render itself** (materials/lighting from the graph -> Unreal/path-tracer)
   is downstream, non-deterministic, and GPU-bound — not in this repo.
+- **OCR stage** (`ocr.py`). Scanned/photographed sheets carry pixels, not a text
+  layer. `render_page(pdf, i, dpi) -> (PIL image, scale)` (pdfium); an `OcrBackend`
+  protocol (`recognize(image) -> list[OcrWord]`); `ocr_words(boxes, page, scale)`
+  converts pixel boxes -> `reassemble.Word` in PDF points (point = pixel/scale)
+  tagged `source="ocr"`. Backends: `StubBackend` (deterministic, test/demo only —
+  recognises nothing), `TesseractBackend` (activates only when pytesseract + the
+  tesseract binary exist, else raises a clear install message; PaddleOCR fits the
+  same interface). `available_backend()` returns a real backend or None. Rendering
+  + conversion + the source tag are tested; **recognition is the backend's job and
+  no engine is bundled.** Deliberately **NOT wired into `engine.run`** — enabling
+  OCR on raster pages changes their output and would break the byte-identity gate,
+  so it must be opt-in; that integration + a scanned fixture with hand-proven
+  ground truths is a future slice. 7 tests.
