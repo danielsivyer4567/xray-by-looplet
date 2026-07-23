@@ -57,9 +57,18 @@ GitHub: `github.com/danielsivyer4567/xray-by-looplet` and
 - Deterministic pipeline: adapter reads PDF/DXF → grammar → scale vote → chain
   checks → tables → trade packs → symbol counts → dimension-conflict flags →
   `takeoff.json`. `src/xray/engine.py` is the orchestrator.
-- **Two trade packs only:** `packs_shed.py` (steel portal sheds),
-  `packs_electrical.py` (schedule-of-loads). Adding a trade = a new pack module
+- **Three trade packs:** `packs_shed.py` (steel portal sheds),
+  `packs_electrical.py` (schedule-of-loads), `packs_fencing.py` (fence-line
+  takeoff — run length, posts, gates). Adding a trade = a new pack module
   + `register()`, no engine change.
+- **`PackContext` now carries `symbols` + `geometry`** (additive; text/table
+  packs ignore them) so a geometry-driven pack — fencing being the first — can
+  see fence runs and placed posts. `packs_fencing.py`: length from drawn runs,
+  posts reconciled against placed POST blocks *or* derived from a flagged 2.4 m
+  spacing assumption (→ needs-human), gates counted. Fixture
+  `fixtures/cad/fencing-boundary.dxf` (generator `tools/make_fencing_fixture.py`);
+  10 tests. Panels/rails/footings deliberately NOT invented — they need the fence
+  system (paling/Colorbond/chainmesh).
 - **Parity gate** (`parity/`) — hashes canonical `takeoff.json` vs the Python
   oracle; frozen sidecar passes 3/3 byte-identical.
 - **Host kit** (`host/xray-host.js`, `@looplet/xray-host`) — the ONE way to run
@@ -72,9 +81,27 @@ GitHub: `github.com/danielsivyer4567/xray-by-looplet` and
     `python -m pricing.oxworks "<pdf>" --out oxworks-catalogue`.
   - `mapping.py` — matches takeoff lines to SKUs. **Proposes, never picks;** a
     human confirms once, then it's remembered per supplier.
-- **Visualization roadmap** (`docs/ROADMAP-visualization.md`) — DXF → counted
-  building graph → WebGL wireframe → 8K render. Roadmap only, nothing built.
-- Tests: **305 pytest + 10 host-kit**, green.
+  - `costing.py` — **P2 costing engine, NO LLM.** Joins takeoff quantities to a
+    price-list CSV on item/alias **+ unit** (unit is a hard gate), multiplies,
+    stamps provenance, and flags unmatched / ambiguous / stale / POA / wrong-unit
+    as `needs-human` (rate stays null). Freshness gate uses an explicit `as_of`
+    (never "today" → reproducible). Outputs `.quote.csv` (opens in Excel) +
+    a self-contained `.quote.html` + `.quote.json`. CLI:
+    `python -m pricing.costing <takeoff.json> <prices.csv> [--as-of --freshness-days --region]`.
+    12 tests. **The machinery is done — P2 only needs Daniel's real prices as
+    DATA, not code.** (openpyxl-based live-formula .xlsx export is the one deferred
+    bit — openpyxl can't go in the hermes venv; CSV+HTML deliver the substance.)
+- **Building graph — viz Phase 1 BUILT** (`src/xray/graph.py`): turns a
+  `takeoff.json` into a queryable graph *view* (no re-reading the drawing) —
+  type/god nodes, the assembly DAG as member-of edges, quantities edged to their
+  evidence, deterministic + non-destructive, with queries (`count_by_type`,
+  `bill_of_materials`, `neighbours`) and a self-contained offline HTML view.
+  CLI: `python -m xray.graph <takeoff.json>` → `.graph.json` + `.graph.html`.
+  12 tests. Phases 2 (WebGL wireframe) + 3 (render) still roadmap-only
+  (`docs/ROADMAP-visualization.md`).
+- Tests: **315 pytest + 10 host-kit**, green. Parity re-frozen after the fencing
+  pack (warehouse's empty-takeoff message now lists `fencing` as a measurable
+  trade — the only byte change; shed/electrical untouched).
 
 **CRM repo (`feat/xray-embed`):**
 - `/xray` route + page + engine-status banner + extension-catalogue tile.
@@ -90,9 +117,14 @@ GitHub: `github.com/danielsivyer4567/xray-by-looplet` and
    `./TemplatePreviewSheet` + `panels/inspector/setup-checklist`, which exist
    only as uncommitted files in the `Looplet-automations-builder-port` worktree.
    The `/xray` renderer bundle fails until whoever owns that branch commits them.
-2. **Fencing pack** — Daniel's core trade, a self-contained new pack module.
-   Caveat proven on a real RFQ: a pack alone won't help without dimensioned fence
-   runs; the real unlock is scaled geometry off the survey.
+2. **Fencing pack — v1 BUILT** (`packs_fencing.py`): fence run length, posts
+   (reconciled/derived), gates, from DXF geometry. Two things remain: (a) the
+   **system-specific BOM** (panels/palings, rails, footings, concrete) — needs
+   Daniel to state the fence system, currently flagged not invented; (b) it only
+   fires on **DXF** today (needs `geometry`/`symbols`); a PDF-survey fence with
+   dimensioned runs won't quantify until fence runs are recoverable from the PDF
+   path. **Sidecar not yet rebuilt** — the frozen `xray-engine.exe` still lacks
+   this pack until `desktop\scripts\build-engine.ps1` is re-run.
 3. **Phase 1 building graph** (roadmap) — all deterministic, useful standalone,
    lowest risk. Good first move.
 4. **WASM engine** — the intended browser-primary tier; must pass the parity gate

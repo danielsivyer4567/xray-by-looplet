@@ -9,8 +9,8 @@ LLM formatter, Excel). **An LLM never produces a quantity, price, or compliance
 verdict** — every number comes from deterministic grammar + geometry + rule
 packs, and carries the formula and evidence that prove it.
 
-Status: **v0.1.0** · two trade packs (steel sheds, electrical) · **305 tests
-passing** · extraction is permissively licensed (pypdfium2 + pikepdf).
+Status: **v0.1.0** · three trade packs (steel sheds, electrical, fencing) ·
+**315 tests passing** · extraction is permissively licensed (pypdfium2 + pikepdf).
 
 ---
 
@@ -83,6 +83,9 @@ trade is added without touching the engine:
 - `packs_shed.py` — steel portal-frame sheds (dimension geometry).
 - `packs_electrical.py` — electrical Schedule of Loads (table extraction →
   reconciled BOM: breakers, cable, boards, loads).
+- `packs_fencing.py` — fence-line takeoff (geometry-driven): run length, posts
+  (reconciled against placed blocks or derived from a flagged spacing
+  assumption), gates. The first pack to consume `ctx.geometry` / `ctx.symbols`.
 
 Add a pack: implement `Pack.detect()` + `Pack.quantify()`, `register()` it, and
 add a real fixture with hand-proven ground truths. See `docs/GUIDE.md`.
@@ -100,7 +103,7 @@ Two points in PDF coordinates + the real distance → exact mm-per-point.
 ## Testing
 
 ```
-set PYTHONPATH=src && python -m pytest tests -q      # expect: 305 passed
+set PYTHONPATH=src && python -m pytest tests -q      # expect: 315 passed
 ```
 The two real plan sets under `fixtures/` are the permanent acceptance suite; the
 ground truths in `tests/` were proven by hand.
