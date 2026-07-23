@@ -105,10 +105,19 @@ GitHub: `github.com/danielsivyer4567/xray-by-looplet` and
   `roundtrip_check` re-derives counts from the scene and gates vs the takeoff.
   Self-contained dependency-free WebGL viewer (orbit/pan/zoom, Iso/Elevation/Plan,
   isolate-by-type). CLI: `python -m xray.wireframe <takeoff.json>`. 10 tests.
-  Phase 3 (photoreal render) still roadmap-only (`docs/ROADMAP-visualization.md`).
   NB: viewer's WebGL couldn't be eyeballed here (in-app preview only runs JS for
-  in-project files and the pane hung); it's adapted from the proven WTC viewer +
-  unit-verified self-contained/round-trip.
+  in-project files and the pane hung, all session); adapted from the proven WTC
+  viewer + unit-verified self-contained/round-trip.
+- **Solid glTF export — viz Phase 3 ON-RAMP BUILT** (`src/xray/solid.py`):
+  extrudes each component to a box prism and writes a self-contained **glTF 2.0**
+  (pure stdlib; buffer as base64 data URI) where every mesh node is named by its
+  graph id with `xrayType`/`xrayTrade`/`heightTier` in `extras`. This is the
+  neutral hand-off Unreal (USD/Datasmith or glTF) / Blender / Omniverse / a
+  path-tracer import. Deterministic; `roundtrip_check` gates mesh counts. CLI
+  `python -m xray.solid <takeoff.json>` → `.gltf`. 10 tests. **The photoreal
+  render itself (materials/lighting → Unreal/path-tracer, or a splat *capture*
+  front door) is downstream/GPU-bound — not in this repo.** Phase 3 render still
+  to do; the geometry export that feeds it is done.
 - **Bad-input handling BUILT** (`src/xray/preflight.py`): every caller of
   `engine.run` gets a typed `InputError` (empty / oversized / wrong-format via
   magic bytes / password-protected / corrupt) instead of a parser traceback; the
@@ -116,7 +125,7 @@ GitHub: `github.com/danielsivyer4567/xray-by-looplet` and
   flattened into a DXF (`fixtures/negative/shed-flattened-from-pdf.dxf`) is now
   flagged (`provenance` check → review) rather than silently ingested as
   confident nonsense; real CAD files are untouched. 13 tests.
-- Tests: **371 pytest + 10 host-kit**, green. Parity re-frozen after the fencing
+- Tests: **381 pytest + 10 host-kit**, green. Parity re-frozen after the fencing
   pack (warehouse's empty-takeoff message now lists `fencing` as a measurable
   trade — the only byte change; shed/electrical untouched).
 
@@ -170,7 +179,7 @@ GitHub: `github.com/danielsivyer4567/xray-by-looplet` and
 
 - `python` on PATH is the **hermes-agent venv**; `python -m xray` needs
   `PYTHONPATH=src`. No `openpyxl`, no `poppler` there (don't install into it).
-- Run the suite: `set PYTHONPATH=src && python -m pytest tests -q` → 371.
+- Run the suite: `set PYTHONPATH=src && python -m pytest tests -q` → 381.
 - Rebuild the frozen engine: `powershell -File desktop\scripts\build-engine.ps1`.
 - Electron: `unset ELECTRON_RUN_AS_NODE` before `npx electron .` or it won't boot.
 - Ports: `:8000` is taken by an unrelated service here; `:5173` by another Vite.

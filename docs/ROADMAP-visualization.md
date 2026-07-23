@@ -78,9 +78,13 @@ From the graph, rebuild 3D geometry. **Still deterministic.**
 - [ ] Extrude plan components to their heights using dimensioned values only
       (the WTC image: plan columns × floor-to-floor × 110). Missing a height is
       a `needs-human`, never a guess — same tier discipline as the engine.
-- [ ] Emit a neutral geometry format (glTF or USD), each mesh tagged with its
-      graph node id, so the wireframe and the graph are the same object viewed
-      two ways.
+- [x] Emit a neutral geometry format, each mesh tagged with its graph node id,
+      so the wireframe and the graph are the same object viewed two ways. **DONE
+      2026-07-24 (`src/xray/solid.py`):** solids extruded to box prisms, exported
+      as self-contained **glTF 2.0** — every mesh a node named by its graph id
+      with type/trade/height-tier in `extras`, deterministic, round-trip gated.
+      This is the Unreal / Blender / Omniverse / path-tracer hand-off. (USD /
+      Datasmith export is the remaining variant for a native Unreal/USD stage.)
 - [ ] WebGL viewer: spin/section/isolate-by-type, click a member → its graph
       node and evidence. Works in the browser, no Unreal needed — this is the
       shippable milestone.

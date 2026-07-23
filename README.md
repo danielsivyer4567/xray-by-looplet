@@ -10,7 +10,7 @@ verdict** — every number comes from deterministic grammar + geometry + rule
 packs, and carries the formula and evidence that prove it.
 
 Status: **v0.1.0** · three trade packs (steel sheds, electrical, fencing) ·
-**371 tests passing** · extraction is permissively licensed (pypdfium2 + pikepdf).
+**381 tests passing** · extraction is permissively licensed (pypdfium2 + pikepdf).
 
 ---
 
@@ -103,7 +103,7 @@ Two points in PDF coordinates + the real distance → exact mm-per-point.
 ## Testing
 
 ```
-set PYTHONPATH=src && python -m pytest tests -q      # expect: 371 passed
+set PYTHONPATH=src && python -m pytest tests -q      # expect: 381 passed
 ```
 The two real plan sets under `fixtures/` are the permanent acceptance suite; the
 ground truths in `tests/` were proven by hand.

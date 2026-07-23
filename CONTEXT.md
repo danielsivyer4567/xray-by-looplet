@@ -233,7 +233,7 @@ prototype, not something the codebase generates.)*
 
 ## Session additions (2026-07-23) — geometry packs, graph, wireframe, costing
 
-Test count now **371** (was 305). Parity: `warehouse-design21` was re-frozen
+Test count now **381** (was 305). Parity: `warehouse-design21` was re-frozen
 because its empty-takeoff `pack-coverage` message now lists `fencing` among the
 measurable trades (the only byte change; shed + electrical untouched).
 
@@ -292,3 +292,17 @@ measurable trades (the only byte change; shed + electrical untouched).
   emits a `provenance` flag check (new schema kind) that reaches `review[]`, so
   `fixtures/negative/shed-flattened-from-pdf.dxf` is flagged not ingested. Real
   fixtures are untouched. `Measure`/`ReadResult` gained `id`/`provenance` fields.
+- **Solid glTF export** (`solid.py`, visualization Phase 3 on-ramp). Phase 2 drew
+  lines; a renderer needs solids. `build_solids(takeoff, heights=None,
+  default_height=None, post_size=None)` extrudes each placed component to a box
+  prism at its measured (x,y); `to_gltf(solids)` writes a valid, self-contained
+  **glTF 2.0** (buffer embedded as a base64 data URI, pure stdlib struct/base64)
+  where every mesh is a node whose `name` is the graph node id and whose `extras`
+  carry `xrayType`/`xrayTrade`/`heightTier` — so the tag rides into Unreal /
+  Blender / Omniverse / a path-tracer. Deterministic (fixed vertex/index order,
+  no timestamps). x,y measured; height given or an ASSUMED value flagged per mesh
+  (determinism ends at the geometry, same as Phase 2). `roundtrip_check` gates
+  mesh counts vs the takeoff. CLI `python -m xray.solid <takeoff.json>` -> `.gltf`.
+  10 tests (incl. decoding the embedded buffer to verify real coordinates).
+  The **render itself** (materials/lighting from the graph -> Unreal/path-tracer)
+  is downstream, non-deterministic, and GPU-bound — not in this repo.
