@@ -97,8 +97,18 @@ GitHub: `github.com/danielsivyer4567/xray-by-looplet` and
   evidence, deterministic + non-destructive, with queries (`count_by_type`,
   `bill_of_materials`, `neighbours`) and a self-contained offline HTML view.
   CLI: `python -m xray.graph <takeoff.json>` → `.graph.json` + `.graph.html`.
-  12 tests. Phases 2 (WebGL wireframe) + 3 (render) still roadmap-only
-  (`docs/ROADMAP-visualization.md`).
+  12 tests.
+- **Wireframe — viz Phase 2 BUILT** (`src/xray/wireframe.py`): extrude each
+  placed component to a vertical element at its measured (x,y), tagged with its
+  graph node id (the WTC "columns from the DXF" idea, generalised). x,y faithful;
+  height is an ASSUMED viewing value, flagged `needs-human` — never a quantity.
+  `roundtrip_check` re-derives counts from the scene and gates vs the takeoff.
+  Self-contained dependency-free WebGL viewer (orbit/pan/zoom, Iso/Elevation/Plan,
+  isolate-by-type). CLI: `python -m xray.wireframe <takeoff.json>`. 10 tests.
+  Phase 3 (photoreal render) still roadmap-only (`docs/ROADMAP-visualization.md`).
+  NB: viewer's WebGL couldn't be eyeballed here (in-app preview only runs JS for
+  in-project files and the pane hung); it's adapted from the proven WTC viewer +
+  unit-verified self-contained/round-trip.
 - Tests: **315 pytest + 10 host-kit**, green. Parity re-frozen after the fencing
   pack (warehouse's empty-takeoff message now lists `fencing` as a measurable
   trade — the only byte change; shed/electrical untouched).
