@@ -6,7 +6,7 @@ matches. Adding a trade = adding a pack module, without touching engine.run.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # base construction units (schema-validated). Packs may declare extras
 # (e.g. electrical VA) via register_units so the engine stays trade-agnostic.
@@ -28,6 +28,11 @@ class PackContext:
     checks: list            # list[Check] produced so far (chain checks)
     tables: list            # list[tables.Table] across all pages
     pages: list             # page meta dicts
+    # Non-text CAD content, empty for a PDF source. A geometry-driven pack
+    # (fencing, earthworks) needs the runs and placements the PDF path can't
+    # provide; a text/table pack (shed, electrical) simply ignores both.
+    symbols: list = field(default_factory=list)    # list[sources.base.Symbol]
+    geometry: list = field(default_factory=list)   # list[sources.base.Measure]
 
 
 class Pack:

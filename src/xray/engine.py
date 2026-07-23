@@ -29,6 +29,7 @@ from xray.sources import find_adapter
 from xray.sources.base import SPARSE_WORD_COUNT
 import xray.packs_shed  # noqa: F401  (registers ShedPack)
 import xray.packs_electrical  # noqa: F401  (registers ElectricalPack)
+import xray.packs_fencing  # noqa: F401  (registers FencingPack)
 
 # a text-heavy page whose structured-output ratio is below this warrants a
 # human look ("read 94%, here's the 6% I couldn't") — a diagnostic, not a gate.
@@ -91,7 +92,8 @@ def run(pdf_path: str, calibrations: dict | None = None) -> dict:
         })
 
     ctx = PackContext(entities=all_entities, checks=all_checks,
-                      tables=all_tables, pages=pages_meta)
+                      tables=all_tables, pages=pages_meta,
+                      symbols=read.symbols, geometry=read.geometry)
     quantities, pack_checks = run_packs(ctx)
     all_checks.extend(pack_checks)
 
