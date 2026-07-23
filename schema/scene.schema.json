@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xray-by-looplet:scene-schema:0.1",
+  "title": "X-Ray WireframeScene",
+  "description": "A 3D wireframe reconstruction of a takeoff (src/xray/wireframe.py build_scene). x,y are measured; height is a viewing value flagged per element.",
+  "type": "object",
+  "required": ["sceneVersion", "elements", "bounds"],
+  "properties": {
+    "sceneVersion": { "type": "string" },
+    "engine": { "type": ["object", "null"] },
+    "source": {
+      "type": "object",
+      "properties": {
+        "documentPath": { "type": ["string", "null"] },
+        "units": { "type": "string" }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "properties": {
+        "heightBasis": { "enum": ["given", "assumed"] },
+        "assumedHeight": { "type": ["number", "null"] },
+        "note": { "type": "string" }
+      }
+    },
+    "types": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "count"],
+        "properties": {
+          "name": { "type": "string" },
+          "colour": { "type": "string" },
+          "count": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "elements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["nodeId", "type", "a", "b", "heightTier"],
+        "properties": {
+          "nodeId": { "type": "string" },
+          "type": { "type": "string" },
+          "kind": { "type": "string" },
+          "colour": { "type": "string" },
+          "heightTier": { "enum": ["given", "needs-human"] },
+          "a": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+          "b": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+        }
+      }
+    },
+    "bounds": {
+      "type": "object",
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+        "max": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+      }
+    }
+  }
+}

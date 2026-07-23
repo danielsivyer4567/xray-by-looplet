@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xray-by-looplet:building-graph-schema:0.1",
+  "title": "X-Ray BuildingGraph",
+  "description": "A queryable view of a takeoff (src/xray/graph.py build_graph). Nodes are polymorphic by `type`; edges relate them.",
+  "type": "object",
+  "required": ["graphVersion", "rollup", "nodes", "edges"],
+  "properties": {
+    "graphVersion": { "type": "string" },
+    "engine": { "type": ["object", "null"] },
+    "source": {
+      "type": "object",
+      "properties": {
+        "documentPath": { "type": ["string", "null"] },
+        "documentSha256": { "type": ["string", "null"] }
+      }
+    },
+    "rollup": {
+      "type": "object",
+      "required": ["totalComponents", "byType", "nodes", "edges"],
+      "properties": {
+        "totalComponents": { "type": "integer", "minimum": 0 },
+        "byType": { "type": "object" },
+        "measures": { "type": "integer", "minimum": 0 },
+        "quantities": { "type": "integer", "minimum": 0 },
+        "nodes": { "type": "integer", "minimum": 0 },
+        "edges": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "communities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "size", "nodeIds"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "size": { "type": "integer", "minimum": 0 },
+          "nodeIds": { "type": "array", "items": { "type": "string" } },
+          "god": { "type": "boolean" }
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "enum": ["type", "component", "measure", "quantity"] },
+          "kind": { "type": "string" },
+          "evidence": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "rel"],
+        "properties": {
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "rel": { "enum": ["instance-of", "member-of", "evidenced-by"] }
+        }
+      }
+    }
+  }
+}

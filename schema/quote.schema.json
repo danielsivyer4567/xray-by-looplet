@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xray-by-looplet:quote-schema:0.1",
+  "title": "X-Ray CostedQuote",
+  "description": "A takeoff costed against a price list (pricing/costing.py cost_takeoff). Every line is either priced with provenance, or flagged needs-human with a reason.",
+  "type": "object",
+  "required": ["lines", "summary"],
+  "properties": {
+    "lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["quantity_id", "item", "unit", "qty", "status"],
+        "properties": {
+          "quantity_id": { "type": "string" },
+          "item": { "type": "string" },
+          "unit": { "type": "string" },
+          "qty": { "type": "number" },
+          "status": { "enum": ["priced", "needs-human"] },
+          "rate": { "type": ["number", "null"] },
+          "amount": { "type": ["number", "null"] },
+          "provenance": { "type": "string" },
+          "reason": { "type": "string" },
+          "supplier": { "type": "string" },
+          "price_date": { "type": "string" }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total", "priced", "needsHuman"],
+      "properties": {
+        "total": { "type": "number" },
+        "priced": { "type": "integer", "minimum": 0 },
+        "needsHuman": { "type": "integer", "minimum": 0 },
+        "asOf": { "type": ["string", "null"] },
+        "freshnessDays": { "type": ["integer", "null"] },
+        "region": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
