@@ -23,6 +23,7 @@ DEFAULT_MAX_BYTES = 300 * 1024 * 1024
 _MAGIC = {
     ".pdf": lambda head: b"%PDF-" in head[:1024],
     ".dxf": lambda head: (b"SECTION" in head) or head.startswith(b"AutoCAD Binary DXF"),
+    ".svg": lambda head: (b"<svg" in head) or (b"<?xml" in head[:64]),
 }
 
 
