@@ -1,0 +1,40 @@
+{
+  "description": "Anti-flake corpus. Every real file that trips the engine gets added here with hand-checked expectations, so that shape can never regress. One case = one parametrized test (tests/test_corpus.py). Paths are relative to the repo root.",
+  "cases": [
+    {
+      "file": "fixtures/shed-manners-aline.pdf",
+      "note": "vector PDF, steel shed — the flagship full takeoff",
+      "expect": { "provenance": false, "minQuantities": 10, "quantities": { "portal frames": 5.0 } }
+    },
+    {
+      "file": "fixtures/electrical-schedule.pdf",
+      "note": "electrical schedule of loads -> BOM",
+      "expect": { "provenance": false, "minQuantities": 5 }
+    },
+    {
+      "file": "fixtures/warehouse-design21.pdf",
+      "note": "reads but no trade pack matches -> 0 quantities, explained not silent",
+      "expect": { "provenance": false, "minQuantities": 0 }
+    },
+    {
+      "file": "fixtures/cad/fencing-boundary.dxf",
+      "note": "fence DXF, geometry-driven pack",
+      "expect": { "provenance": false, "quantities": { "fence line": 48.0 } }
+    },
+    {
+      "file": "fixtures/cad/structural-columns.dxf",
+      "note": "columns drawn as POLYLINES on named layers (the WTC shape)",
+      "expect": { "provenance": false, "quantities": { "Perimeter Columns": 12.0, "Core Columns": 4.0 } }
+    },
+    {
+      "file": "fixtures/cad/architectural_test_fixtures_v2.dxf",
+      "note": "nested blocks -> exact recursive counts",
+      "expect": { "provenance": false }
+    },
+    {
+      "file": "fixtures/negative/shed-flattened-from-pdf.dxf",
+      "note": "a plot flattened into a DXF -> MUST be flagged, never ingested",
+      "expect": { "provenance": true }
+    }
+  ]
+}
