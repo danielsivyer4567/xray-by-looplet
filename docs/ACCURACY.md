@@ -5,7 +5,7 @@ was independently re-verified by an adversarial pass that ignored the builders'
 claims, re-ran the CLI, re-validated both JSONs against the schema, and reopened
 the marked PDFs.
 
-**Overall:** 406/406 automated tests pass. Adversarial verdict: PASS on all
+**Overall:** 408/408 automated tests pass. Adversarial verdict: PASS on all
 checks, zero fixes required.
 
 ---
@@ -87,7 +87,7 @@ reassembler recovers whole tokens by clustering fragments that share a baseline.
 
 Performed as a fresh, distrustful re-run of everything:
 
-1. `pytest` — 406 passed, exit 0.
+1. `pytest` — 408 passed, exit 0.
 2. CLI fresh runs on both fixtures — exit 0, all four output files written.
 3. Independent schema validation of both JSONs — valid; `engine.name == "xray-by-looplet"`.
 4. Ground truths re-checked inside the JSONs (not via pytest) — all present.

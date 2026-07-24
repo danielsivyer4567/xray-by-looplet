@@ -70,6 +70,22 @@ def test_pack_does_not_fire_without_a_column_layer():
     assert pack.detect(ctx2) is False
 
 
+def test_footprint_area_is_computed_and_unit_converted(result):
+    """The FOOTPRINT outline (120 m x 80 m in the fixture's cm units) becomes a
+    gross plan area of 9600 m2 — a closed polygon worked out as its own quantity,
+    with the boundary's own id as evidence."""
+    area = _q(result, "q-area-footprint")
+    assert area is not None
+    assert area["qty"] == 9600.0 and area["unit"] == "m2"
+    assert area["tier"] == "single-source" and area["evidence"]
+
+
+def test_non_area_outlines_do_not_become_area(result):
+    """CORE_WALLS is a closed outline too, but it isn't an area layer — it must
+    not produce a floor-area quantity."""
+    assert _q(result, "q-area-core-walls") is None
+
+
 def test_column_layer_matching():
     assert set(_column_layers([
         Measure(kind="polyline", value=1, layer="PERIMETER_COLUMNS"),

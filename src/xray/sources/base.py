@@ -132,6 +132,12 @@ class Measure:
     text_value: float | None = None
     conflict: bool = False
 
+    # Enclosed area of a CLOSED polyline (shoelace), in drawing units squared;
+    # None for lines, dimensions, and open polylines. Lets a closed outline
+    # (a footprint, a slab) become an area quantity, the way its length already
+    # can become a run.
+    area: float | None = None
+
 
 @dataclass
 class ReadResult:

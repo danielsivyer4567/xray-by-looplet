@@ -256,14 +256,20 @@ class DxfAdapter(SourceAdapter):
                         kind="line", value=math.dist((a.x, a.y), (b.x, b.y)),
                         layer=layer, trade=trade_for(layer), id=mid))
                 elif t == "LWPOLYLINE":
-                    pts = [(p[0], p[1]) for p in e.get_points("xy")]
-                    if e.closed and len(pts) > 2:
-                        pts = pts + [pts[0]]
-                    total = sum(math.dist(pts[i], pts[i + 1])
-                                for i in range(len(pts) - 1))
+                    raw = [(p[0], p[1]) for p in e.get_points("xy")]
+                    ring = raw + [raw[0]] if (e.closed and len(raw) > 2) else raw
+                    total = sum(math.dist(ring[i], ring[i + 1])
+                                for i in range(len(ring) - 1))
+                    # shoelace area for a closed ring (0 for open/degenerate)
+                    area = None
+                    if e.closed and len(raw) >= 3:
+                        n = len(raw)
+                        area = abs(sum(raw[i][0] * raw[(i + 1) % n][1]
+                                       - raw[(i + 1) % n][0] * raw[i][1]
+                                       for i in range(n))) / 2.0
                     geometry.append(Measure(
                         kind="polyline", value=total, layer=layer,
-                        trade=trade_for(layer), id=mid))
+                        trade=trade_for(layer), id=mid, area=area))
             except Exception:
                 continue   # one malformed entity never fails the whole read
 

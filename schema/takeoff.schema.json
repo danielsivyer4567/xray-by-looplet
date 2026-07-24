@@ -156,6 +156,7 @@
           "id": { "type": "string" },
           "kind": { "enum": ["dimension", "line", "polyline"] },
           "value": { "type": "number" },
+          "area": { "type": ["number", "null"] },
           "layer": { "type": "string" },
           "unit": { "type": "string" },
           "text": { "type": "string" },
