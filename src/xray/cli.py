@@ -95,6 +95,10 @@ def main(argv=None) -> int:
     write_marked_pdf(str(pdf), str(marked_path), result)
 
     print(_summary(result))
+    from xray.advisor import assess_input
+    adv = assess_input(result)
+    print(f"input    : [{adv['grade']}] {adv['verdict']}")
+    print(f"           {adv['guidance']}")
     print(f"wrote    : {json_path}")
     print(f"wrote    : {marked_path}")
 
