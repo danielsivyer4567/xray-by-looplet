@@ -138,6 +138,23 @@ class Measure:
     # can become a run.
     area: float | None = None
 
+    # Elevation (z) when a polyline is planar — a survey CONTOUR line sits at one
+    # RL, so its z is the contour's level. None when z varies (a breakline) or is
+    # absent (a flat plan). This is what makes a contour drawing readable.
+    elev: float | None = None
+
+
+@dataclass
+class SurveyPoint:
+    """A point with an elevation — a survey spot level (from a POINT entity) or a
+    terrain-mesh vertex. z is the whole reason a survey exists, so it is kept."""
+    x: float
+    y: float
+    z: float
+    layer: str = ""
+    id: str = ""
+    kind: str = "survey"     # "survey" (a POINT) | "mesh" (a surface vertex)
+
 
 @dataclass
 class ReadResult:
@@ -153,6 +170,7 @@ class ReadResult:
     # CAD adapters. Split on the count-vs-measure axis the engine already makes.
     symbols: list = field(default_factory=list)   # list[Symbol]  -> ea
     geometry: list = field(default_factory=list)  # list[Measure] -> lm/m2/m3
+    points: list = field(default_factory=list)    # list[SurveyPoint] -> RL/z
 
     # Unit provenance. A CAD header can declare a unit that the geometry
     # contradicts, so the resolved unit and the evidence for it travel together

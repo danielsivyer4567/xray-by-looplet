@@ -18,7 +18,7 @@
     "warehouse-design21": {
       "pages": 50,
       "quantities": 0,
-      "sha256": "8d479b2b4fc1899a5cc2de21eb63402ff081879db79c766472387c55841d126a"
+      "sha256": "5b4179ad62a18c43872a73e895d03ea37e66072ecd71691165a66b739f3441ec"
     }
   },
   "note": "Frozen oracle output of the Python engine. Regenerate with `python -m parity.freeze` \u2014 never edit by hand."

@@ -32,6 +32,7 @@ import xray.packs_shed  # noqa: F401  (registers ShedPack)
 import xray.packs_electrical  # noqa: F401  (registers ElectricalPack)
 import xray.packs_fencing  # noqa: F401  (registers FencingPack)
 import xray.packs_structural  # noqa: F401  (registers StructuralCountPack)
+import xray.packs_survey  # noqa: F401  (registers SurveyPack)
 
 # a text-heavy page whose structured-output ratio is below this warrants a
 # human look ("read 94%, here's the 6% I couldn't") — a diagnostic, not a gate.
@@ -148,6 +149,7 @@ def run(pdf_path: str, calibrations: dict | None = None, ocr=None) -> dict:
     ctx = PackContext(entities=all_entities, checks=all_checks,
                       tables=all_tables, pages=pages_meta,
                       symbols=read.symbols, geometry=read.geometry,
+                      points=getattr(read, "points", []),
                       units=read.units)
     quantities, pack_checks = run_packs(ctx)
     all_checks.extend(pack_checks)
@@ -290,6 +292,8 @@ def run(pdf_path: str, calibrations: dict | None = None, ocr=None) -> dict:
         } for s in read.symbols]
     if read.geometry:
         result["geometry"] = [asdict(g) for g in read.geometry]
+    if getattr(read, "points", None):
+        result["points"] = [asdict(p) for p in read.points]
     if read.units:
         result["document"]["units"] = dict(read.units)
 

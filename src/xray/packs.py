@@ -33,6 +33,7 @@ class PackContext:
     # provide; a text/table pack (shed, electrical) simply ignores both.
     symbols: list = field(default_factory=list)    # list[sources.base.Symbol]
     geometry: list = field(default_factory=list)   # list[sources.base.Measure]
+    points: list = field(default_factory=list)     # list[sources.base.SurveyPoint]
     # {declared, resolved, basis, mismatch, verified} for a CAD source, {} for a
     # PDF. `verified` False means the unit rests only on the header — a pack
     # emitting a unit-dependent quantity should flag rather than assert.

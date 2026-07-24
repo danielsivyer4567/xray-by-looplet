@@ -23,7 +23,7 @@ import re
 from pathlib import Path
 
 from xray.sources.base import (
-    Measure, PageRead, ReadResult, SourceAdapter, Symbol, register,
+    Measure, PageRead, ReadResult, SourceAdapter, Symbol, SurveyPoint, register,
 )
 
 # $INSUNITS enumeration (ISO/AutoCAD); only the values a plan realistically uses.
@@ -227,6 +227,7 @@ class DxfAdapter(SourceAdapter):
 
         symbols: list[Symbol] = []
         geometry: list[Measure] = []
+        points: list[SurveyPoint] = []   # survey spot levels + terrain-mesh verts
         words = []          # DXF TEXT/MTEXT flow into the existing text pipeline
 
         # every placement at every depth — see expand_inserts
@@ -276,6 +277,42 @@ class DxfAdapter(SourceAdapter):
                     geometry.append(Measure(
                         kind="polyline", value=total, layer=layer,
                         trade=trade_for(layer), id=mid, area=area))
+                elif t == "POLYLINE":
+                    # old-style heavy POLYLINE: a survey terrain MESH, or a 2D/3D
+                    # polyline (contour / breakline). Mesh vertices become survey
+                    # points; a polyline becomes a run that carries its elevation.
+                    verts = [tuple(v.dxf.location)[:3] for v in e.vertices]
+                    is_mesh = (getattr(e, "is_poly_mesh", False)
+                               or getattr(e, "is_polygon_mesh", False)
+                               or getattr(e, "is_poly_face_mesh", False))
+                    if is_mesh:
+                        for k, (x, y, z) in enumerate(verts):
+                            points.append(SurveyPoint(x=float(x), y=float(y),
+                                z=float(z), layer=layer, id=f"{mid}-v{k}", kind="mesh"))
+                    elif len(verts) >= 2:
+                        pts2 = [(x, y) for x, y, z in verts]
+                        closed = bool(getattr(e, "is_closed", False))
+                        ring = pts2 + [pts2[0]] if (closed and len(pts2) > 2) else pts2
+                        total = sum(math.dist(ring[i], ring[i + 1])
+                                    for i in range(len(ring) - 1))
+                        zs = [z for _, _, z in verts]
+                        # a contour sits at ONE level; a breakline's z varies
+                        elev = (float(zs[0]) if zs and
+                                len({round(z, 4) for z in zs}) == 1 else None)
+                        # shoelace area for a closed ring (same formula as LWPOLYLINE)
+                        area = None
+                        if closed and len(pts2) >= 3:
+                            n = len(pts2)
+                            area = abs(sum(pts2[i][0] * pts2[(i + 1) % n][1]
+                                           - pts2[(i + 1) % n][0] * pts2[i][1]
+                                           for i in range(n))) / 2.0
+                        geometry.append(Measure(
+                            kind="polyline", value=total, layer=layer,
+                            trade=trade_for(layer), id=mid, elev=elev, area=area))
+                elif t == "POINT":
+                    loc = e.dxf.location
+                    points.append(SurveyPoint(x=float(loc[0]), y=float(loc[1]),
+                        z=float(loc[2]), layer=layer, id=mid, kind="survey"))
             except Exception:
                 continue   # one malformed entity never fails the whole read
 
@@ -326,8 +363,8 @@ class DxfAdapter(SourceAdapter):
         # header, and the seam needs a stable identity for diagnostics.
         return ReadResult(pages=pages,
                           producer="ezdxf",
-                          symbols=symbols, geometry=geometry, units=units,
-                          provenance=provenance)
+                          symbols=symbols, geometry=geometry, points=points,
+                          units=units, provenance=provenance)
 
 
 def block_counts(symbols) -> dict:
