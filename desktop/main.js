@@ -49,7 +49,12 @@ app.whenReady().then(() => {
   ipcMain.handle("pick-pdf", async () => {
     const r = await dialog.showOpenDialog({
       properties: ["openFile"],
-      filters: [{ name: "Plan PDFs", extensions: ["pdf"] }],
+      // The engine reads native CAD (DXF) and SVG as well as PDF plans, so the
+      // picker must offer them — a survey DXF is exactly what a user tests here.
+      filters: [
+        { name: "Plans (PDF / DXF / SVG)", extensions: ["pdf", "dxf", "svg"] },
+        { name: "All files", extensions: ["*"] },
+      ],
     });
     return r.canceled ? null : r.filePaths[0];
   });
