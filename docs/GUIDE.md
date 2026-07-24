@@ -216,7 +216,7 @@ to 16,467 against a stated 16,465 becomes a `flag` with `delta +2`.
 | `chains.py` | 322 | `find_chain_checks(entities, page_rect)`, `trig_check(spec, entities)`, `titleblock_mask(page_rect)` |
 | `tables.py` | 181 | `extract_tables(words, page_rect)` -> schedule rows |
 | `quantify.py` | 186 | `shed_pack(spec, entities, checks)` |
-| `packs*.py` | — | registry + shed / electrical / **fencing** packs; `hardening.py` (wastage, laps, accessories) |
+| `packs*.py` | — | registry + shed / electrical / fencing / structural packs; `hardening.py` (wastage, laps, accessories) |
 | `graph.py` | — | `build_graph(takeoff)` → building graph (a view); `count_by_type`, `bill_of_materials`, `render_html` |
 | `wireframe.py` | — | `build_scene(takeoff)` + `roundtrip_check`; self-contained WebGL viewer |
 | `pricing/costing.py` | — | `cost_takeoff(quantities, price_rows, …)` → priced quote (no LLM) |
@@ -246,7 +246,7 @@ ground truth is re-proven on each run against the fixtures.
 
 The suite spans the pipeline (reassemble, grammar, scale, chains, tables,
 writer, `engine.run` end-to-end + schema conformance), the DXF adapter, the
-three trade packs (shed, electrical, fencing), and the derived layers — the
+four trade packs (shed, electrical, fencing, structural), and the derived layers — the
 building graph, the wireframe with its round-trip gate, and costing. The two
 real plan sets under `fixtures/`, the CAD fixtures, and the generated fixtures
 are the permanent acceptance suite; ground truths were proven by hand. CAD/graph/
@@ -267,9 +267,10 @@ never a wrong quantity or a false pass.
   213k-segment sheets.
 - **Small-dim near-misses:** a handful of the same class on both fixtures — all
   review-tier, none false passes.
-- **Trade packs:** shed (portal frames), electrical (schedule of loads), and
-  fencing (geometry-driven: run length, posts, gates). Warehouse structural is
-  not built yet (by design).
+- **Trade packs:** shed (portal frames), electrical (schedule of loads), fencing
+  (geometry-driven: run length, posts, gates), and structural (layer-semantic
+  column counting + gross floor area). Warehouse-specific quantities beyond
+  columns are not built yet (by design).
 
 ---
 
