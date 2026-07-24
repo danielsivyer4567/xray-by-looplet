@@ -233,7 +233,7 @@ prototype, not something the codebase generates.)*
 
 ## Session additions (2026-07-23) — geometry packs, graph, wireframe, costing
 
-Test count now **393** (was 305). Parity: `warehouse-design21` was re-frozen
+Test count now **406** (was 305). Parity: `warehouse-design21` was re-frozen
 because its empty-takeoff `pack-coverage` message now lists `fencing` among the
 measurable trades (the only byte change; shed + electrical untouched).
 
@@ -241,6 +241,27 @@ measurable trades (the only byte change; shed + electrical untouched).
   `field(default_factory=list)`). `engine.run` passes `read.symbols` /
   `read.geometry`. Text/table packs (shed, electrical) ignore them; a
   geometry-driven pack consumes them. Does not change any PDF-path output.
+- **Structural-count pack** (`packs_structural.py`) — LAYER-SEMANTIC counting.
+  Components drawn as polylines (not blocks) on named layers weren't counted; a
+  real WTC column plan read as 0 quantities. `RE_COLUMN` matches column layers
+  (PERIMETER_COLUMNS / CORE_COLUMNS / PIER / PILE …); the pack counts polylines
+  per such layer -> a `reconciled` quantity per layer with per-member evidence
+  (each polyline's id). Boundary layers (FOOTPRINT, walls) are not counted.
+  Fixture `fixtures/cad/structural-columns.dxf` (12 perimeter + 4 core, generator
+  `tools/make_structural_fixture.py`). Fires only on DXF column layers, so no
+  existing fixture/parity output changes. 5 tests.
+- **Anti-flake corpus** (`fixtures/corpus/manifest.json`, `tests/test_corpus.py`).
+  A rules engine flakes on unanticipated file shapes; the cure is discipline —
+  every real file that trips it becomes a permanent case (file + `expect`:
+  `provenance` bool, `minQuantities`, `quantities` {item: qty}) run via a
+  parametrized harness. Adding coverage is a JSON edit. Seeded across 7 shapes
+  (vector PDF, electrical, empty-match warehouse, fence, polyline-columns, nested
+  blocks, flattened-fake). See `fixtures/corpus/README.md`.
+- **Provenance fix (2026-07-24):** a real WTC DXF false-flagged as a flattened
+  plot — it draws columns as polylines with no DIMENSION entities. The deciding
+  tell is now the LAYERS: suspicion requires no blocks AND no dims AND **no
+  trade-semantic layer** (`trade_for(layer)` empty for all geometry). Generic
+  buckets (0/GEOMETRY/TEXT) still flag; named trade layers read clean.
 - **Fencing pack** (`packs_fencing.py`) — the first geometry-driven trade.
   `detect`: any LINE/LWPOLYLINE on a layer matching `/FENC/i`, or a POST/GATE
   block on such a layer. `quantify`: fence run length (lm) = summed runs

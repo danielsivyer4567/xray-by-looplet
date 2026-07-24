@@ -57,10 +57,19 @@ GitHub: `github.com/danielsivyer4567/xray-by-looplet` and
 - Deterministic pipeline: adapter reads PDF/DXF → grammar → scale vote → chain
   checks → tables → trade packs → symbol counts → dimension-conflict flags →
   `takeoff.json`. `src/xray/engine.py` is the orchestrator.
-- **Three trade packs:** `packs_shed.py` (steel portal sheds),
+- **Four trade packs:** `packs_shed.py` (steel portal sheds),
   `packs_electrical.py` (schedule-of-loads), `packs_fencing.py` (fence-line
-  takeoff — run length, posts, gates). Adding a trade = a new pack module
-  + `register()`, no engine change.
+  takeoff — run length, posts, gates), `packs_structural.py` (**layer-semantic
+  column count**: counts polyline footprints per structural layer, e.g. a real
+  WTC plan → Perimeter Columns 236 + Core Columns 45, reconciled, per-member
+  evidence — the fix for "read the file but counted nothing" when members are
+  polylines not blocks). Adding a trade = a new pack module + `register()`.
+- **Anti-flake corpus** (`fixtures/corpus/manifest.json` + `tests/test_corpus.py`):
+  every real file that trips the engine becomes a permanent case (file +
+  invariants: provenance flag, min quantities, exact quantity values), so that
+  shape can't regress. Adding coverage = one JSON entry. Also fixed a **provenance
+  false-positive** a real WTC DXF exposed (polyline components + no dims looked
+  like a flatten; now the deciding tell is trade-semantic layer names).
 - **`PackContext` now carries `symbols` + `geometry`** (additive; text/table
   packs ignore them) so a geometry-driven pack — fencing being the first — can
   see fence runs and placed posts. `packs_fencing.py`: length from drawn runs,
@@ -137,7 +146,7 @@ GitHub: `github.com/danielsivyer4567/xray-by-looplet` and
   needs a real engine installed + a **scanned fixture with hand-proven ground
   truths** to prove end-to-end recognition. Reality: clean scans achievable, a
   glare-y phone photo (Daniel's survey) is much harder. 12 tests (7 unit + 5 wire).
-- Tests: **393 pytest + 10 host-kit**, green. Parity re-frozen after the fencing
+- Tests: **406 pytest + 10 host-kit**, green. Parity re-frozen after the fencing
   pack (warehouse's empty-takeoff message now lists `fencing` as a measurable
   trade — the only byte change; shed/electrical untouched).
 
@@ -191,7 +200,7 @@ GitHub: `github.com/danielsivyer4567/xray-by-looplet` and
 
 - `python` on PATH is the **hermes-agent venv**; `python -m xray` needs
   `PYTHONPATH=src`. No `openpyxl`, no `poppler` there (don't install into it).
-- Run the suite: `set PYTHONPATH=src && python -m pytest tests -q` → 393.
+- Run the suite: `set PYTHONPATH=src && python -m pytest tests -q` → 406.
 - Rebuild the frozen engine: `powershell -File desktop\scripts\build-engine.ps1`.
 - Electron: `unset ELECTRON_RUN_AS_NODE` before `npx electron .` or it won't boot.
 - Ports: `:8000` is taken by an unrelated service here; `:5173` by another Vite.
