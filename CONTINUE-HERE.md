@@ -146,7 +146,7 @@ GitHub: `github.com/danielsivyer4567/xray-by-looplet` and
   needs a real engine installed + a **scanned fixture with hand-proven ground
   truths** to prove end-to-end recognition. Reality: clean scans achievable, a
   glare-y phone photo (Daniel's survey) is much harder. 12 tests (7 unit + 5 wire).
-- Tests: **408 pytest + 10 host-kit**, green. Parity re-frozen after the fencing
+- Tests: **414 pytest + 10 host-kit**, green. Parity re-frozen after the fencing
   pack (warehouse's empty-takeoff message now lists `fencing` as a measurable
   trade — the only byte change; shed/electrical untouched).
 
@@ -200,7 +200,7 @@ GitHub: `github.com/danielsivyer4567/xray-by-looplet` and
 
 - `python` on PATH is the **hermes-agent venv**; `python -m xray` needs
   `PYTHONPATH=src`. No `openpyxl`, no `poppler` there (don't install into it).
-- Run the suite: `set PYTHONPATH=src && python -m pytest tests -q` → 408.
+- Run the suite: `set PYTHONPATH=src && python -m pytest tests -q` → 414.
 - Rebuild the frozen engine: `powershell -File desktop\scripts\build-engine.ps1`.
 - Electron: `unset ELECTRON_RUN_AS_NODE` before `npx electron .` or it won't boot.
 - Ports: `:8000` is taken by an unrelated service here; `:5173` by another Vite.
