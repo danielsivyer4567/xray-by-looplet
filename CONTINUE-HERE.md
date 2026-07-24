@@ -20,7 +20,7 @@ didn't make the changes, reconcile before you touch anything.
 
 ## What X-Ray is
 
-A headless, deterministic construction-plan takeoff engine. **PDF/DXF in →
+A headless, deterministic construction-plan takeoff engine. **PDF/DXF/SVG in →
 `takeoff.json` out.** The core promise, enforced in code: an LLM never produces a
 quantity — every number re-derives from the drawing, carries its formula +
 evidence + a confidence tier, and output is byte-identical run to run (a parity
@@ -64,6 +64,16 @@ GitHub: `github.com/danielsivyer4567/xray-by-looplet` and
   WTC plan → Perimeter Columns 236 + Core Columns 45, reconciled, per-member
   evidence — the fix for "read the file but counted nothing" when members are
   polylines not blocks). Adding a trade = a new pack module + `register()`.
+- **Three input formats — PDF · DXF · SVG.** `sources/svg.py` (stdlib xml) reads
+  SVG as a vector source: `<use>`→Symbol, rects/polygons/paths→Measure (length +
+  area), `<g id>`→layer (so the same packs work), `<text>`→Word. Fixture
+  `fixtures/svg/sample-plan.svg`. SVG width unit is declared → `verified:False`.
+  6 tests.
+- **Input-quality advisor** (`src/xray/advisor.py`): a door verdict + export
+  guidance from signals already computed (page kinds, coverage, provenance/unit
+  flags, native-CAD). Ladder: native CAD / vector PDF → ideal; raster → OCR (PNG
+  not JPEG, or re-export DXF); traced-scan → flagged; sparse/photo → export
+  vector. Wired into `xray run` output; `python -m xray.advisor`. 5 tests.
 - **Anti-flake corpus** (`fixtures/corpus/manifest.json` + `tests/test_corpus.py`):
   every real file that trips the engine becomes a permanent case (file +
   invariants: provenance flag, min quantities, exact quantity values), so that
@@ -146,7 +156,7 @@ GitHub: `github.com/danielsivyer4567/xray-by-looplet` and
   needs a real engine installed + a **scanned fixture with hand-proven ground
   truths** to prove end-to-end recognition. Reality: clean scans achievable, a
   glare-y phone photo (Daniel's survey) is much harder. 12 tests (7 unit + 5 wire).
-- Tests: **424 pytest + 10 host-kit**, green. Parity re-frozen after the fencing
+- Tests: **435 pytest + 10 host-kit**, green. Parity re-frozen after the fencing
   pack (warehouse's empty-takeoff message now lists `fencing` as a measurable
   trade — the only byte change; shed/electrical untouched).
 
@@ -200,7 +210,7 @@ GitHub: `github.com/danielsivyer4567/xray-by-looplet` and
 
 - `python` on PATH is the **hermes-agent venv**; `python -m xray` needs
   `PYTHONPATH=src`. No `openpyxl`, no `poppler` there (don't install into it).
-- Run the suite: `set PYTHONPATH=src && python -m pytest tests -q` → 424.
+- Run the suite: `set PYTHONPATH=src && python -m pytest tests -q` → 435.
 - Rebuild the frozen engine: `powershell -File desktop\scripts\build-engine.ps1`.
 - Electron: `unset ELECTRON_RUN_AS_NODE` before `npx electron .` or it won't boot.
 - Ports: `:8000` is taken by an unrelated service here; `:5173` by another Vite.

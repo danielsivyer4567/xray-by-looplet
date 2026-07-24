@@ -2,7 +2,7 @@
 
 **Sees through plans. PDF in, quantities out.**
 
-Version 0.1.0 · engine id `xray-by-looplet` · Python 3.11 · 424/424 tests passing
+Version 0.1.0 · engine id `xray-by-looplet` · Python 3.11 · 435/435 tests passing
 
 X-Ray by Looplet is a **headless** construction-plan takeoff engine. Feed it a
 plan PDF; it returns a structured `takeoff.json` (typed entities, verification
@@ -99,7 +99,7 @@ The two fixtures under `fixtures/` are the safety net. The engine can never
 silently regress below what has been proven by hand.
 
 1. **Edit** a module under `src/xray/`.
-2. **Run the full suite:** `python -m pytest tests -q` — expect `424 passed`.
+2. **Run the full suite:** `python -m pytest tests -q` — expect `435 passed`.
 3. **Re-run the CLI on both fixtures** and confirm exit 0 + both output files:
    ```
    set PYTHONPATH=src
@@ -241,7 +241,7 @@ To support a new drawing family (e.g. steel-framed warehouses):
 
 ## Accuracy & tests
 
-Full results in `docs/ACCURACY.md`. Summary: **424/424 tests pass**, and every
+Full results in `docs/ACCURACY.md`. Summary: **435/435 tests pass**, and every
 ground truth is re-proven on each run against the fixtures.
 
 The suite spans the pipeline (reassemble, grammar, scale, chains, tables,
