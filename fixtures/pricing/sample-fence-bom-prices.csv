@@ -1,0 +1,10 @@
+item,alias,unit,price_aud,effective_date,region,supplier,notes
+fence posts,line post,ea,18.50,2026-07-15,QLD-SE,SAMPLE-FenceCo,SAMPLE - replace with yours
+gates,pedestrian gate,ea,240.00,2026-07-15,QLD-SE,SAMPLE-FenceCo,SAMPLE - replace with yours
+rails,fence rail;top rail,lm,9.50,2026-07-15,QLD-SE,SAMPLE-FenceCo,SAMPLE - replace with yours
+sheets,colorbond sheet;infill sheet,ea,48.00,2026-07-15,QLD-SE,SAMPLE-FenceCo,SAMPLE - replace with yours
+palings,paling,ea,3.20,2026-07-15,QLD-SE,SAMPLE-Timber,SAMPLE - replace with yours
+footings,footing;post hole,ea,12.00,2026-07-15,QLD-SE,SAMPLE-FenceCo,SAMPLE - dig/set labour
+concrete,concrete footing;post mix,m3,320.00,2026-07-15,QLD-SE,SAMPLE-Concrete,SAMPLE - replace with yours
+caps,post cap,ea,4.50,2026-07-15,QLD-SE,SAMPLE-FenceCo,SAMPLE - replace with yours
+chainmesh,mesh,m2,14.00,2026-07-15,QLD-SE,SAMPLE-FenceCo,SAMPLE - replace with yours

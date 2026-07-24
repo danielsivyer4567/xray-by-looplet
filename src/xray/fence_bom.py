@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from pathlib import Path
 
 # Fence systems. Every value is a stated default a user can override; none is
@@ -50,8 +51,10 @@ def _find(quantities, qid):
 
 
 def _line(item, qty, unit, tier, formula, notes, evidence):
-    return {"item": item, "qty": round(qty, 3), "unit": unit, "tier": tier,
-            "formula": formula, "notes": notes, "evidence": list(evidence or [])}
+    slug = re.sub(r"[^a-z0-9]+", "-", item.lower()).strip("-")
+    return {"id": f"q-bom-{slug}", "item": item, "qty": round(qty, 3), "unit": unit,
+            "tier": tier, "formula": formula, "notes": notes,
+            "evidence": list(evidence or [])}
 
 
 def fence_bom(takeoff: dict, system: str = "colorbond",
@@ -76,6 +79,18 @@ def fence_bom(takeoff: dict, system: str = "colorbond",
 
     rails = s.get("rails_per_bay", 2) + (1 if height_m > s.get("mid_rail_over_m", 1e9) else 0)
     lines = []
+
+    # posts + gates come straight from the measured takeoff (the physical items
+    # to buy — the BOM would be incomplete without them)
+    if posts is not None:
+        lines.append(_line("Fence posts", posts, "ea",
+            posts_q.get("tier", "single-source"), posts_q.get("formula", ""),
+            "posts to set", posts_q.get("evidence", [])))
+    gates_q = _find(q, "q-fence-gates")
+    if gates_q:
+        lines.append(_line("Gates", float(gates_q["qty"]), "ea", "single-source",
+            gates_q.get("formula", ""), "gate leaf + hardware per gate",
+            gates_q.get("evidence", [])))
 
     # rails span the whole run
     if not s.get("mesh"):
@@ -130,15 +145,33 @@ def main(argv=None) -> int:
     ap.add_argument("takeoff")
     ap.add_argument("--system", default="colorbond", choices=sorted(SYSTEMS))
     ap.add_argument("--height", type=float, default=1.8, metavar="M")
+    ap.add_argument("--prices", metavar="CSV",
+                    help="price-list CSV — cost the BOM (no LLM); see templates/")
     a = ap.parse_args(argv)
 
     takeoff = json.loads(Path(a.takeoff).read_text(encoding="utf-8"))
     bom = fence_bom(takeoff, system=a.system, height_m=a.height)
     print(f"{bom.get('systemLabel', a.system)} @ {a.height:g} m over "
           f"{bom.get('runLength_m', 0):g} lm:")
-    for ln in bom["lines"]:
-        print(f"  [{ln['tier']:>13}] {ln['item']:<22} {ln['qty']:>8g} {ln['unit']:<3} "
-              f"{ln['formula']}")
+
+    if not a.prices:
+        for ln in bom["lines"]:
+            print(f"  [{ln['tier']:>13}] {ln['item']:<22} {ln['qty']:>8g} "
+                  f"{ln['unit']:<3} {ln['formula']}")
+        return 0
+
+    # BOM -> costing: the lines are already quantity-shaped, so they feed the
+    # deterministic costing engine straight through (join on item+unit, no LLM).
+    from pricing.costing import load_price_list, cost_takeoff
+    costed = cost_takeoff(bom["lines"], load_price_list(a.prices))
+    for ln in costed["lines"]:
+        amt = "" if ln["amount"] is None else f"${ln['amount']:,.2f}"
+        tail = ln["provenance"] or ln["reason"]
+        print(f"  {ln['item']:<22} {ln['qty']:>8g} {ln['unit']:<3} {amt:>11}  "
+              f"[{ln['status']}] {tail}")
+    s = costed["summary"]
+    print(f"  {'TOTAL (priced)':<35} ${s['total']:,.2f}"
+          f"   ({s['priced']} priced, {s['needsHuman']} need a price)")
     return 0
 
 

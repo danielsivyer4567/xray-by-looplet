@@ -78,6 +78,26 @@ def test_overrides_change_the_bill(takeoff):
     assert _line(b, "Colorbond sheets")["qty"] == 16.0          # ceil(48/3.0)
 
 
+def test_bom_includes_the_posts_and_gates_themselves(takeoff):
+    """The physical posts + gates are orderable lines — the bill is incomplete
+    without them (caught while wiring costing)."""
+    b = fence_bom(takeoff, system="colorbond", height_m=1.8)
+    assert _line(b, "Fence posts")["qty"] == 21.0
+    assert _line(b, "Gates")["qty"] == 1.0
+
+
+def test_bom_prices_end_to_end(takeoff):
+    """BOM lines are quantity-shaped, so they feed the costing engine straight
+    through: drawing -> bill -> priced quote, no LLM. $3,045.08 on the sample
+    list, every line matched."""
+    from pricing.costing import load_price_list, cost_takeoff
+    b = fence_bom(takeoff, system="colorbond", height_m=1.8)
+    prices = load_price_list(REPO / "fixtures" / "pricing" / "sample-fence-bom-prices.csv")
+    costed = cost_takeoff(b["lines"], prices)
+    assert costed["summary"]["needsHuman"] == 0
+    assert costed["summary"]["total"] == 3045.08
+
+
 def test_unknown_system_errors():
     with pytest.raises(ValueError):
         fence_bom({"quantities": []}, system="brick")
