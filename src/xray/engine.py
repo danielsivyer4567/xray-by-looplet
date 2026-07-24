@@ -147,7 +147,8 @@ def run(pdf_path: str, calibrations: dict | None = None, ocr=None) -> dict:
 
     ctx = PackContext(entities=all_entities, checks=all_checks,
                       tables=all_tables, pages=pages_meta,
-                      symbols=read.symbols, geometry=read.geometry)
+                      symbols=read.symbols, geometry=read.geometry,
+                      units=read.units)
     quantities, pack_checks = run_packs(ctx)
     all_checks.extend(pack_checks)
 
@@ -237,6 +238,19 @@ def run(pdf_path: str, calibrations: dict | None = None, ocr=None) -> dict:
                     + "; ".join(prov.get("reasons", []))
                     + ") — counts and lengths from it may be unfounded; verify "
                     "against a file saved by a CAD application")))
+
+    # The drawing's unit rests only on the $INSUNITS header, with no geometric
+    # evidence to corroborate it — and a header can lie (a plan may declare cm
+    # yet be drawn in feet). Every unit-dependent number then rests on an
+    # unverified scale, so it is flagged for a human, not asserted silently.
+    u = read.units or {}
+    if u.get("resolved") and u.get("verified") is False and read.geometry:
+        all_checks.append(Check(
+            id="chk-unit-unverified", kind="unit-unverified", status="flag",
+            detail=(f"drawing unit '{u['resolved']}' rests only on the $INSUNITS "
+                    "header, with no geometric evidence to confirm it — lengths "
+                    "and (especially) areas may be wrong if the header is mislabelled; "
+                    "confirm the drawing unit before ordering")))
 
     review = []
     for q in quantities:

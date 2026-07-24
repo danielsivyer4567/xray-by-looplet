@@ -70,14 +70,35 @@ def test_pack_does_not_fire_without_a_column_layer():
     assert pack.detect(ctx2) is False
 
 
-def test_footprint_area_is_computed_and_unit_converted(result):
-    """The FOOTPRINT outline (120 m x 80 m in the fixture's cm units) becomes a
-    gross plan area of 9600 m2 — a closed polygon worked out as its own quantity,
-    with the boundary's own id as evidence."""
+def test_footprint_area_arithmetic_is_correct(result):
+    """The FOOTPRINT outline (120 m x 80 m in the fixture's cm units) works out to
+    9600 m2 — the polygon area, its own quantity, with the boundary's id as
+    evidence. (Its tier is checked separately.)"""
     area = _q(result, "q-area-footprint")
     assert area is not None
-    assert area["qty"] == 9600.0 and area["unit"] == "m2"
-    assert area["tier"] == "single-source" and area["evidence"]
+    assert area["qty"] == 9600.0 and area["unit"] == "m2" and area["evidence"]
+
+
+def test_header_only_unit_flags_the_area_and_the_document(result):
+    """The fixture's cm rests only on $INSUNITS with nothing to corroborate it, so
+    area (unit-squared, catastrophic if wrong) is needs-human and a document-level
+    unit-unverified check reaches review — the fix for the silent 4.3 m2 class."""
+    area = _q(result, "q-area-footprint")
+    assert area["tier"] == "needs-human"
+    assert "unit" in area["notes"].lower()
+    assert any(c["kind"] == "unit-unverified" for c in result["checks"])
+
+
+def test_verified_unit_lets_area_be_single_source():
+    """With the unit proven by evidence (units.verified True), the same area is
+    single-source, not flagged — the flag is about *uncertainty*, not the maths."""
+    poly = Measure(kind="polyline", value=40.0, layer="FOOTPRINT", unit="m",
+                   id="f1", area=100.0)
+    ctx = PackContext([], [], [], [], symbols=[], geometry=[poly],
+                      units={"resolved": "m", "verified": True})
+    quants, _ = StructuralCountPack().quantify(ctx)
+    area = next(q for q in quants if q.id == "q-area-footprint")
+    assert area.tier == "single-source" and area.qty == 100.0
 
 
 def test_non_area_outlines_do_not_become_area(result):

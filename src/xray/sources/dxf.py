@@ -182,7 +182,7 @@ def resolve_units(doc, symbols, blocks) -> dict:
             resolved, basis = unit, f"block name {name} ({stated:g}{unit} ~ {width:.2f} units)"
             mismatch = bool(declared) and declared != unit
             return {"declared": declared, "resolved": resolved,
-                    "basis": basis, "mismatch": mismatch}
+                    "basis": basis, "mismatch": mismatch, "verified": True}
 
     # ISO metric thread: a BOLT_M16 drawn 16 units across is a 16 mm bolt, so
     # the drawing unit is the millimetre.
@@ -198,8 +198,14 @@ def resolve_units(doc, symbols, blocks) -> dict:
             mismatch = bool(declared) and declared != "mm"
             break
 
+    # 'verified' means the unit rests on GEOMETRIC evidence (a block's own named
+    # size / a metric thread), not merely the $INSUNITS header. A header can lie
+    # (the WTC plan declares cm but is drawn in feet), so an unverified unit makes
+    # every unit-dependent quantity — areas especially, since they scale as the
+    # unit SQUARED — suspect. The engine flags that rather than asserting it.
+    verified = basis.startswith(("block name", "metric thread"))
     return {"declared": declared, "resolved": resolved,
-            "basis": basis, "mismatch": mismatch}
+            "basis": basis, "mismatch": mismatch, "verified": verified}
 
 
 class DxfAdapter(SourceAdapter):

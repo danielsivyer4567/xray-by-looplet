@@ -86,6 +86,10 @@ class StructuralCountPack(Pack):
                 notes="each closed polyline on this structural layer is one member"))
 
         # --- gross plan area from a closed footprint/slab outline ------------
+        # area scales as the unit SQUARED, so a mislabelled unit is catastrophic.
+        # Only claim m2 when the unit is verified by geometric evidence; a
+        # header-only unit flags needs-human even though the arithmetic is done.
+        unit_verified = bool((getattr(ctx, "units", {}) or {}).get("verified"))
         for g in _area_polys(geometry):
             layer = getattr(g, "layer", "") or ""
             slug = re.sub(r"[^a-z0-9]+", "-", layer.lower()).strip("-")
@@ -97,13 +101,23 @@ class StructuralCountPack(Pack):
                     qty=round(g.area, 1), unit="m2", tier="needs-human", evidence=ev,
                     formula=f"closed area on layer {layer} (drawing units, unit unresolved)",
                     notes="drawing unit could not be resolved — set units and re-run"))
-            else:
-                area_m2 = round(g.area * factor * factor, 1)
+                continue
+            area_m2 = round(g.area * factor * factor, 1)
+            if unit_verified:
                 quants.append(Quantity(
                     id=f"q-area-{slug}", trade="structural", item=f"{_humanise(layer)} area",
                     qty=area_m2, unit="m2", tier="single-source", evidence=ev,
                     formula=f"polygon area of the {layer} outline = {area_m2} m2",
                     notes="gross plan area of the closed outline (one floor)"))
+            else:
+                quants.append(Quantity(
+                    id=f"q-area-{slug}", trade="structural", item=f"{_humanise(layer)} area",
+                    qty=area_m2, unit="m2", tier="needs-human", evidence=ev,
+                    formula=f"polygon area of the {layer} outline = {area_m2} m2 "
+                            f"(assuming unit '{getattr(g, 'unit', '')}')",
+                    notes=("drawing unit rests only on the $INSUNITS header, unverified "
+                           "— area scales as the unit squared, so confirm the unit; "
+                           "if it is mislabelled this figure is wrong")))
         return quants, []
 
 
