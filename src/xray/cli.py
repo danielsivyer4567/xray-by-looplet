@@ -90,9 +90,16 @@ def main(argv=None) -> int:
         return 2
 
     json_path = out_dir / f"{pdf.stem}.xray.json"
-    marked_path = out_dir / f"{pdf.stem}.marked.pdf"
     json_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
-    write_marked_pdf(str(pdf), str(marked_path), result)
+
+    # The marked-up copy overlays evidence boxes on the ORIGINAL PDF pages, so it
+    # only exists for a PDF source. A CAD source (DXF/SVG) has no PDF to draw on —
+    # its evidence is the entity ids in the takeoff JSON — so the markup step is
+    # skipped rather than crashing the whole run on a non-PDF input.
+    marked_path = out_dir / f"{pdf.stem}.marked.pdf"
+    is_pdf = pdf.suffix.lower() == ".pdf"
+    if is_pdf:
+        write_marked_pdf(str(pdf), str(marked_path), result)
 
     print(_summary(result))
     from xray.advisor import assess_input
@@ -100,7 +107,11 @@ def main(argv=None) -> int:
     print(f"input    : [{adv['grade']}] {adv['verdict']}")
     print(f"           {adv['guidance']}")
     print(f"wrote    : {json_path}")
-    print(f"wrote    : {marked_path}")
+    if is_pdf:
+        print(f"wrote    : {marked_path}")
+    else:
+        print(f"note     : marked-up PDF skipped ({pdf.suffix} source has no PDF "
+              f"pages; evidence is the entity ids in the takeoff JSON)")
 
     if args.report:
         from xray.report import render_quote_html

@@ -20,6 +20,7 @@ from xray import engine, cli                          # noqa: E402
 
 SHED = REPO / "fixtures" / "shed-manners-aline.pdf"
 FLAT = REPO / "fixtures" / "negative" / "shed-flattened-from-pdf.dxf"
+TERRAIN = REPO / "fixtures" / "cad" / "terrain-survey.dxf"
 
 
 # ------------------------------------------------------------ structural guards
@@ -152,3 +153,28 @@ def test_polyline_columns_on_a_trade_layer_are_not_flagged(tmp_path):
 
     generic = engine.run(str(_dxf("GEOMETRY")))          # generic bucket -> flatten
     assert [c for c in generic["checks"] if c["kind"] == "provenance"]
+
+
+def test_survey_dxf_is_not_flagged_as_flattened():
+    """Regression (the isolated frozen-engine run tripped this): a survey has no
+    blocks, no dimensions and no trade layer — the flatten signature — yet its
+    POINT spot levels and terrain mesh are decisive native-CAD evidence a plot can
+    never carry. It must NOT be told 'get the native DXF' when it IS one."""
+    pytest.importorskip("ezdxf")
+    r = engine.run(str(TERRAIN))
+    assert not [c for c in r["checks"] if c["kind"] == "provenance"]
+    from xray.advisor import assess_input
+    assert assess_input(r)["grade"] == "excellent"
+
+
+def test_cli_skips_pdf_markup_on_a_cad_source(tmp_path, capsys):
+    """A DXF/SVG source has no PDF pages to overlay evidence boxes on, so the CLI
+    must write the takeoff JSON and exit 0 — never crash pikepdf trying to open a
+    DXF as a PDF (which broke the frozen engine on the very first survey run)."""
+    pytest.importorskip("ezdxf")
+    rc = cli.main(["run", str(TERRAIN), "--out", str(tmp_path)])
+    assert rc == 0
+    assert (tmp_path / "terrain-survey.xray.json").is_file()
+    assert not (tmp_path / "terrain-survey.marked.pdf").exists()
+    out = capsys.readouterr().out
+    assert "marked-up PDF skipped" in out

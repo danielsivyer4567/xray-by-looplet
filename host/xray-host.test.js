@@ -21,6 +21,7 @@ const host = require('./xray-host')
 const REPO = path.resolve(__dirname, '..')
 const REAL_ENGINE = path.join(REPO, 'desktop', 'engine', 'bin', host.EXE)
 const SHED = path.join(REPO, 'fixtures', 'shed-manners-aline.pdf')
+const TERRAIN = path.join(REPO, 'fixtures', 'cad', 'terrain-survey.dxf')
 
 function tmpFile(name = 'fake-engine') {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-test-'))
@@ -135,4 +136,26 @@ test('runTakeoff drives the real frozen engine', { skip: !fs.existsSync(REAL_ENG
   // Scratch dirs are removed, so client plans do not pile up on disk.
   const after = fs.readdirSync(os.tmpdir()).filter((d) => d.startsWith('xray-')).length
   assert.strictEqual(after, before, 'temp takeoff dir should be cleaned up')
+})
+
+test('the frozen engine reads a survey DXF and computes the site fall', {
+  skip: !fs.existsSync(REAL_ENGINE) || !fs.existsSync(TERRAIN),
+}, async () => {
+  // Black-box proof that the SHIPPED binary — no Python, no source tree — does
+  // the survey work. The ground truth (fall 324.33 m over 5 shots) is derived by
+  // hand in tests/test_survey.py; here the .exe alone must reproduce it.
+  const takeoff = await host.runTakeoff(TERRAIN, { candidates: [REAL_ENGINE] })
+
+  const fall = takeoff.quantities.find((q) => q.id === 'q-survey-fall')
+  assert.ok(fall, 'the frozen engine must emit a survey site-fall quantity')
+  assert.strictEqual(fall.qty, 324.33, 'max RL - min RL = 283.42 - (-40.91)')
+  assert.strictEqual(fall.unit, 'm')
+
+  const spots = takeoff.quantities.find((q) => q.id === 'q-survey-spot-levels')
+  assert.strictEqual(spots.qty, 5, 'five POINT spot levels')
+
+  // Law #1 holds even through the frozen boundary: no survey line carries a price.
+  for (const q of takeoff.quantities.filter((q) => q.trade === 'survey')) {
+    assert.ok(!('price' in q) && !('cost' in q), `${q.id} must not be priced`)
+  }
 })

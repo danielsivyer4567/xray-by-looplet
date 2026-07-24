@@ -350,7 +350,15 @@ class DxfAdapter(SourceAdapter):
         reasons = []
         n_dims = sum(1 for g in geometry if g.kind == "dimension")
         has_trade_layer = any(getattr(g, "trade", "") for g in geometry)
-        if not symbols and n_dims == 0 and geometry and not has_trade_layer:
+        # Survey content is decisive native-CAD evidence: a flattened plot is loose
+        # 2D strokes and NEVER carries POINT spot levels, a polygon mesh, or a
+        # polyline sitting at a real elevation. A survey drawing legitimately has
+        # no blocks, no dimensions and no trade layer, so without this it would be
+        # mislabelled a fake — and told to "get the native DXF" it already is.
+        has_survey = bool(points) or any(
+            getattr(g, "elev", None) is not None for g in geometry)
+        if (not symbols and n_dims == 0 and geometry
+                and not has_trade_layer and not has_survey):
             reasons.append("no blocks (INSERTs), no DIMENSION entities, and no "
                            f"trade-semantic layers, yet {len(geometry)} loose "
                            "line/polyline(s) — the signature of a flattened plot")
