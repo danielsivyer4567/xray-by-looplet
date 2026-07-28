@@ -96,3 +96,27 @@ def test_cors_preflight_allows_localhost_viewer():
     })
     assert r.status_code == 200, r.text
     assert r.headers["access-control-allow-origin"] == "http://localhost:5178"
+
+
+def test_cors_preflight_allows_looplet_production_viewer():
+    """The embedded production viewer may call the user's loopback worker."""
+    r = client.options("/v1/takeoff/raw", headers={
+        "Origin": "https://app.looplet.com.au",
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Private-Network": "true",
+    })
+    assert r.status_code == 200, r.text
+    assert r.headers["access-control-allow-origin"] == "https://app.looplet.com.au"
+    assert r.headers["access-control-allow-private-network"] == "true"
+
+
+def test_cors_preflight_rejects_untrusted_private_network_origin():
+    """An arbitrary website must not gain access to the local worker."""
+    r = client.options("/v1/takeoff/raw", headers={
+        "Origin": "https://attacker.example",
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Private-Network": "true",
+    })
+    assert r.status_code == 400
+    assert "access-control-allow-origin" not in r.headers
+    assert "access-control-allow-private-network" not in r.headers
