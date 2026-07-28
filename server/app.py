@@ -24,6 +24,7 @@ behind a task queue and keep this as the thin HTTP edge.
 """
 from __future__ import annotations
 
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -33,7 +34,7 @@ _SRC = Path(__file__).resolve().parents[1] / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, UploadFile
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -45,15 +46,40 @@ from server.quote_lines import build_quote_draft
 
 app = FastAPI(title="X-Ray by Looplet - takeoff worker", version=__version__)
 
-# Browser clients (e.g. the PDX CAD viewer served from a local static server)
-# post plans straight from the page, so the worker must answer the preflight.
-# Localhost origins only -- widen deliberately if you ever expose this.
+# Browser clients post plans straight from the embedded PDX CAD viewer, so the
+# worker must answer both ordinary CORS and Chrome's loopback/private-network
+# preflight. Keep the production origin explicit: this worker can read local
+# plan files submitted by the user and must not become a general web endpoint.
+_ALLOWED_BROWSER_ORIGIN = re.compile(
+    r"^(?:https?://(?:localhost|127\.0\.0\.1)(?::\d+)?|"
+    r"https://app\.looplet\.com\.au)$"
+)
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origin_regex=_ALLOWED_BROWSER_ORIGIN.pattern,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
+    allow_private_network=True,
 )
+
+
+@app.middleware("http")
+async def allow_approved_private_network_requests(request: Request, call_next):
+    """Opt approved viewer origins into browser loopback access.
+
+    Chromium sends ``Access-Control-Request-Private-Network: true`` before a
+    public HTTPS page may call a service on localhost. The response header is
+    deliberately limited to the same origins accepted by CORS.
+    """
+    response = await call_next(request)
+    origin = request.headers.get("origin", "")
+    private_network_header = "Access-Control-Allow-Private-Network"
+    if (
+        not _ALLOWED_BROWSER_ORIGIN.fullmatch(origin)
+        and private_network_header in response.headers
+    ):
+        del response.headers[private_network_header]
+    return response
 
 
 def _auth(authorization: str | None = Header(None)) -> None:
