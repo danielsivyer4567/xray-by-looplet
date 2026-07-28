@@ -33,6 +33,7 @@ import xray.packs_electrical  # noqa: F401  (registers ElectricalPack)
 import xray.packs_fencing  # noqa: F401  (registers FencingPack)
 import xray.packs_structural  # noqa: F401  (registers StructuralCountPack)
 import xray.packs_survey  # noqa: F401  (registers SurveyPack)
+import xray.packs_residential  # noqa: F401  (registers ResidentialPack)
 
 # a text-heavy page whose structured-output ratio is below this warrants a
 # human look ("read 94%, here's the 6% I couldn't") — a diagnostic, not a gate.
