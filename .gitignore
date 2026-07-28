@@ -3,6 +3,7 @@ __pycache__/
 .pytest_cache/
 out/
 verify_tmp/
+_to_delete/
 *.marked.pdf
 takeoff.json
 
@@ -18,3 +19,12 @@ keys/
 *.p12
 *.pfx
 *.key
+
+# salvage/quarantine folder used when recovering from git lock or branch mishaps
+_to_delete/
+
+# Supplier pricing is commercially sensitive and dates fast: the IMPORTER is
+# version-controlled, the prices are not. Regenerate from the source PDF.
+pricing/out/
+*-catalogue.json
+*-catalogue.csv

@@ -1,0 +1,10 @@
+# Never commit build artifacts or the frozen engine binary (66 MB) — they are
+# reproduced locally by `npm install` + scripts/build-engine.
+node_modules/
+dist/
+out/
+engine/bin/
+engine/build/
+engine/dist/
+engine/*.spec
+*.log

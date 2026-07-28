@@ -1,0 +1,13 @@
+{
+  "name": "@looplet/xray-host",
+  "version": "0.1.0",
+  "description": "Canonical Node host kit for running the X-Ray takeoff engine — used by the standalone desktop app and by any app embedding X-Ray.",
+  "main": "xray-host.js",
+  "files": ["xray-host.js", "README.md"],
+  "license": "UNLICENSED",
+  "private": true,
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "test": "node --test xray-host.test.js"
+  }
+}

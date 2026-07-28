@@ -120,6 +120,10 @@ class Measure:
     unit: str = ""           # resolved unit, "" when unresolved
     text: str = ""           # raw dim text; "<>" means derived, never typed
     trade: str = ""
+    # Stable per-run identity so a quantity built from this run can cite it as
+    # evidence (the entity handle from the source file; deterministic per file).
+    # "" for adapters that cannot supply one.
+    id: str = ""
 
     # An override dimension states a number the geometry does not support. BOTH
     # are kept: `value` is what the drawing measures, `text_value` is what it
@@ -127,6 +131,29 @@ class Measure:
     # trusting either one is how a wrong number reaches a quote.
     text_value: float | None = None
     conflict: bool = False
+
+    # Enclosed area of a CLOSED polyline (shoelace), in drawing units squared;
+    # None for lines, dimensions, and open polylines. Lets a closed outline
+    # (a footprint, a slab) become an area quantity, the way its length already
+    # can become a run.
+    area: float | None = None
+
+    # Elevation (z) when a polyline is planar — a survey CONTOUR line sits at one
+    # RL, so its z is the contour's level. None when z varies (a breakline) or is
+    # absent (a flat plan). This is what makes a contour drawing readable.
+    elev: float | None = None
+
+
+@dataclass
+class SurveyPoint:
+    """A point with an elevation — a survey spot level (from a POINT entity) or a
+    terrain-mesh vertex. z is the whole reason a survey exists, so it is kept."""
+    x: float
+    y: float
+    z: float
+    layer: str = ""
+    id: str = ""
+    kind: str = "survey"     # "survey" (a POINT) | "mesh" (a surface vertex)
 
 
 @dataclass
@@ -143,11 +170,18 @@ class ReadResult:
     # CAD adapters. Split on the count-vs-measure axis the engine already makes.
     symbols: list = field(default_factory=list)   # list[Symbol]  -> ea
     geometry: list = field(default_factory=list)  # list[Measure] -> lm/m2/m3
+    points: list = field(default_factory=list)    # list[SurveyPoint] -> RL/z
 
     # Unit provenance. A CAD header can declare a unit that the geometry
     # contradicts, so the resolved unit and the evidence for it travel together
     # and any conflict is surfaced, never silently propagated.
     units: dict = field(default_factory=dict)     # {declared, resolved, basis, mismatch}
+
+    # File provenance. A valid-but-fake file (e.g. a PDF plot flattened into a
+    # DXF container) parses cleanly yet has no real CAD semantics; the adapter
+    # sets {suspect: bool, reasons: [...]} so the engine can flag it rather than
+    # emit confident nonsense. Empty for adapters that don't assess it.
+    provenance: dict = field(default_factory=dict)
 
 
 class SourceAdapter:

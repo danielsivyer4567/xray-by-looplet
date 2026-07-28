@@ -1,0 +1,5 @@
+item,alias,unit,price_aud,effective_date,region,supplier,notes
+fence line,colorbond fence;fencing,lm,72.00,2026-07-15,QLD-SE,SAMPLE-FenceCo,SAMPLE - replace with yours
+fence posts,line post,ea,18.50,2026-07-15,QLD-SE,SAMPLE-FenceCo,SAMPLE - replace with yours
+gates,pedestrian gate,ea,240.00,2026-07-15,QLD-SE,SAMPLE-FenceCo,SAMPLE - replace with yours
+bollard,,ea,90.00,2026-07-15,QLD-SE,SAMPLE-FenceCo,priced per each - decoy for the unit gate

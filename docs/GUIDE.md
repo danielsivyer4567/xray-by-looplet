@@ -2,7 +2,7 @@
 
 **Sees through plans. PDF in, quantities out.**
 
-Version 0.1.0 · engine id `xray-by-looplet` · Python 3.11 · 117/117 tests passing
+Version 0.1.0 · engine id `xray-by-looplet` · Python 3.11 · 435/435 tests passing
 
 X-Ray by Looplet is a **headless** construction-plan takeoff engine. Feed it a
 plan PDF; it returns a structured `takeoff.json` (typed entities, verification
@@ -99,7 +99,7 @@ The two fixtures under `fixtures/` are the safety net. The engine can never
 silently regress below what has been proven by hand.
 
 1. **Edit** a module under `src/xray/`.
-2. **Run the full suite:** `python -m pytest tests -q` — expect `75 passed`.
+2. **Run the full suite:** `python -m pytest tests -q` — expect `435 passed`.
 3. **Re-run the CLI on both fixtures** and confirm exit 0 + both output files:
    ```
    set PYTHONPATH=src
@@ -216,7 +216,10 @@ to 16,467 against a stated 16,465 becomes a `flag` with `delta +2`.
 | `chains.py` | 322 | `find_chain_checks(entities, page_rect)`, `trig_check(spec, entities)`, `titleblock_mask(page_rect)` |
 | `tables.py` | 181 | `extract_tables(words, page_rect)` -> schedule rows |
 | `quantify.py` | 186 | `shed_pack(spec, entities, checks)` |
-| `packs*.py` | — | pack registry + shed / electrical packs; `hardening.py` (wastage, laps, accessories) |
+| `packs*.py` | — | registry + shed / electrical / fencing / structural packs; `hardening.py` (wastage, laps, accessories) |
+| `graph.py` | — | `build_graph(takeoff)` → building graph (a view); `count_by_type`, `bill_of_materials`, `render_html` |
+| `wireframe.py` | — | `build_scene(takeoff)` + `roundtrip_check`; self-contained WebGL viewer |
+| `pricing/costing.py` | — | `cost_takeoff(quantities, price_rows, …)` → priced quote (no LLM) |
 | `markup_writer.py` | 225 | `write_marked_pdf(src, out, result)` |
 | `engine.py` | 178 | `run(pdf_path, calibrations=None) -> dict` |
 | `cli.py` | 79 | `main(argv)` |
@@ -238,17 +241,16 @@ To support a new drawing family (e.g. steel-framed warehouses):
 
 ## Accuracy & tests
 
-Full results in `docs/ACCURACY.md`. Summary: 75/75 tests pass, and every
-ground truth is re-proven on each run against the two real plan sets.
+Full results in `docs/ACCURACY.md`. Summary: **435/435 tests pass**, and every
+ground truth is re-proven on each run against the fixtures.
 
-| Test file | Tests | Covers |
-|---|---|---|
-| `test_reassemble.py` | 23 | glyph-split recovery; clean-PDF passthrough |
-| `test_grammar.py` | 13 | spec-token parsing, tag normalisation, classification |
-| `test_chains.py` | 14 | chain sums, trig 793, masking, shed quantity pack |
-| `test_writer.py` | 9 | annotation injection, `/Measure`, JSON attachment roundtrip |
-| `test_engine.py` | 16 | end-to-end `run()` + CLI, schema conformance, ground truths |
-| **Total** | **75** | `75 passed in ~3s` |
+The suite spans the pipeline (reassemble, grammar, scale, chains, tables,
+writer, `engine.run` end-to-end + schema conformance), the DXF adapter, the
+four trade packs (shed, electrical, fencing, structural), and the derived layers — the
+building graph, the wireframe with its round-trip gate, and costing. The two
+real plan sets under `fixtures/`, the CAD fixtures, and the generated fixtures
+are the permanent acceptance suite; ground truths were proven by hand. CAD/graph/
+wireframe suites `pytest.importorskip("ezdxf")` so a bare install still passes.
 
 ---
 
@@ -265,8 +267,10 @@ never a wrong quantity or a false pass.
   213k-segment sheets.
 - **Small-dim near-misses:** a handful of the same class on both fixtures — all
   review-tier, none false passes.
-- **Warehouse quantity pack:** not built yet (by design). The shed portal-frame
-  pack is the only rule pack in v0.1.0.
+- **Trade packs:** shed (portal frames), electrical (schedule of loads), fencing
+  (geometry-driven: run length, posts, gates), and structural (layer-semantic
+  column counting + gross floor area). Warehouse-specific quantities beyond
+  columns are not built yet (by design).
 
 ---
 

@@ -8,6 +8,7 @@ from xray.sources.base import (  # noqa: F401
     adapters, find_adapter, register,
 )
 import xray.sources.pdf  # noqa: F401  (registers PdfAdapter)
+import xray.sources.svg  # noqa: F401  (registers SvgAdapter; stdlib xml only)
 
 # DXF needs ezdxf; if it isn't installed the PDF path must still work, so the
 # adapter simply goes unregistered rather than breaking the import.

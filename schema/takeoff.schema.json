@@ -26,7 +26,8 @@
             "declared": { "type": "string" },
             "resolved": { "type": "string" },
             "basis": { "type": "string" },
-            "mismatch": { "type": "boolean" }
+            "mismatch": { "type": "boolean" },
+            "verified": { "type": "boolean" }
           }
         },
         "pages": {
@@ -96,7 +97,7 @@
         "required": ["id", "kind", "status", "detail"],
         "properties": {
           "id": { "type": "string" },
-          "kind": { "enum": ["chain-sum", "trig", "cross-sheet", "count", "schedule-match", "dim-override"] },
+          "kind": { "enum": ["chain-sum", "trig", "cross-sheet", "count", "schedule-match", "dim-override", "pack-coverage", "pack-error", "provenance", "unit-unverified"] },
           "status": { "enum": ["pass", "flag"] },
           "detail": { "type": "string" },
           "delta": { "type": ["number", "null"] },
@@ -153,8 +154,10 @@
         "type": "object",
         "required": ["kind", "value"],
         "properties": {
+          "id": { "type": "string" },
           "kind": { "enum": ["dimension", "line", "polyline"] },
           "value": { "type": "number" },
+          "area": { "type": ["number", "null"] },
           "layer": { "type": "string" },
           "unit": { "type": "string" },
           "text": { "type": "string" },

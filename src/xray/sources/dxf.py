@@ -23,7 +23,7 @@ import re
 from pathlib import Path
 
 from xray.sources.base import (
-    Measure, PageRead, ReadResult, SourceAdapter, Symbol, register,
+    Measure, PageRead, ReadResult, SourceAdapter, Symbol, SurveyPoint, register,
 )
 
 # $INSUNITS enumeration (ISO/AutoCAD); only the values a plan realistically uses.
@@ -182,7 +182,7 @@ def resolve_units(doc, symbols, blocks) -> dict:
             resolved, basis = unit, f"block name {name} ({stated:g}{unit} ~ {width:.2f} units)"
             mismatch = bool(declared) and declared != unit
             return {"declared": declared, "resolved": resolved,
-                    "basis": basis, "mismatch": mismatch}
+                    "basis": basis, "mismatch": mismatch, "verified": True}
 
     # ISO metric thread: a BOLT_M16 drawn 16 units across is a 16 mm bolt, so
     # the drawing unit is the millimetre.
@@ -198,8 +198,14 @@ def resolve_units(doc, symbols, blocks) -> dict:
             mismatch = bool(declared) and declared != "mm"
             break
 
+    # 'verified' means the unit rests on GEOMETRIC evidence (a block's own named
+    # size / a metric thread), not merely the $INSUNITS header. A header can lie
+    # (the WTC plan declares cm but is drawn in feet), so an unverified unit makes
+    # every unit-dependent quantity — areas especially, since they scale as the
+    # unit SQUARED — suspect. The engine flags that rather than asserting it.
+    verified = basis.startswith(("block name", "metric thread"))
     return {"declared": declared, "resolved": resolved,
-            "basis": basis, "mismatch": mismatch}
+            "basis": basis, "mismatch": mismatch, "verified": verified}
 
 
 class DxfAdapter(SourceAdapter):
@@ -221,14 +227,18 @@ class DxfAdapter(SourceAdapter):
 
         symbols: list[Symbol] = []
         geometry: list[Measure] = []
+        points: list[SurveyPoint] = []   # survey spot levels + terrain-mesh verts
         words = []          # DXF TEXT/MTEXT flow into the existing text pipeline
 
         # every placement at every depth — see expand_inserts
         symbols.extend(expand_inserts(msp, all_blocks))
 
-        for e in msp:
+        for gi, e in enumerate(msp):
             t = e.dxftype()
             layer = getattr(e.dxf, "layer", "") or ""
+            # the entity handle is a stable per-file id; fall back to the read
+            # ordinal so every run is still citable as evidence.
+            mid = str(getattr(e.dxf, "handle", "") or "") or f"g{gi}"
             try:
                 if t == "DIMENSION":
                     # the measured span comes from the geometry, never from the
@@ -246,21 +256,63 @@ class DxfAdapter(SourceAdapter):
                         text_value=tv,
                         conflict=(tv is not None and
                                   abs(tv - measured) > max(1e-6, abs(measured) * 1e-6)),
-                        trade=trade_for(layer)))
+                        trade=trade_for(layer), id=mid))
                 elif t == "LINE":
                     a, b = e.dxf.start, e.dxf.end
                     geometry.append(Measure(
                         kind="line", value=math.dist((a.x, a.y), (b.x, b.y)),
-                        layer=layer, trade=trade_for(layer)))
+                        layer=layer, trade=trade_for(layer), id=mid))
                 elif t == "LWPOLYLINE":
-                    pts = [(p[0], p[1]) for p in e.get_points("xy")]
-                    if e.closed and len(pts) > 2:
-                        pts = pts + [pts[0]]
-                    total = sum(math.dist(pts[i], pts[i + 1])
-                                for i in range(len(pts) - 1))
+                    raw = [(p[0], p[1]) for p in e.get_points("xy")]
+                    ring = raw + [raw[0]] if (e.closed and len(raw) > 2) else raw
+                    total = sum(math.dist(ring[i], ring[i + 1])
+                                for i in range(len(ring) - 1))
+                    # shoelace area for a closed ring (0 for open/degenerate)
+                    area = None
+                    if e.closed and len(raw) >= 3:
+                        n = len(raw)
+                        area = abs(sum(raw[i][0] * raw[(i + 1) % n][1]
+                                       - raw[(i + 1) % n][0] * raw[i][1]
+                                       for i in range(n))) / 2.0
                     geometry.append(Measure(
                         kind="polyline", value=total, layer=layer,
-                        trade=trade_for(layer)))
+                        trade=trade_for(layer), id=mid, area=area))
+                elif t == "POLYLINE":
+                    # old-style heavy POLYLINE: a survey terrain MESH, or a 2D/3D
+                    # polyline (contour / breakline). Mesh vertices become survey
+                    # points; a polyline becomes a run that carries its elevation.
+                    verts = [tuple(v.dxf.location)[:3] for v in e.vertices]
+                    is_mesh = (getattr(e, "is_poly_mesh", False)
+                               or getattr(e, "is_polygon_mesh", False)
+                               or getattr(e, "is_poly_face_mesh", False))
+                    if is_mesh:
+                        for k, (x, y, z) in enumerate(verts):
+                            points.append(SurveyPoint(x=float(x), y=float(y),
+                                z=float(z), layer=layer, id=f"{mid}-v{k}", kind="mesh"))
+                    elif len(verts) >= 2:
+                        pts2 = [(x, y) for x, y, z in verts]
+                        closed = bool(getattr(e, "is_closed", False))
+                        ring = pts2 + [pts2[0]] if (closed and len(pts2) > 2) else pts2
+                        total = sum(math.dist(ring[i], ring[i + 1])
+                                    for i in range(len(ring) - 1))
+                        zs = [z for _, _, z in verts]
+                        # a contour sits at ONE level; a breakline's z varies
+                        elev = (float(zs[0]) if zs and
+                                len({round(z, 4) for z in zs}) == 1 else None)
+                        # shoelace area for a closed ring (same formula as LWPOLYLINE)
+                        area = None
+                        if closed and len(pts2) >= 3:
+                            n = len(pts2)
+                            area = abs(sum(pts2[i][0] * pts2[(i + 1) % n][1]
+                                           - pts2[(i + 1) % n][0] * pts2[i][1]
+                                           for i in range(n))) / 2.0
+                        geometry.append(Measure(
+                            kind="polyline", value=total, layer=layer,
+                            trade=trade_for(layer), id=mid, elev=elev, area=area))
+                elif t == "POINT":
+                    loc = e.dxf.location
+                    points.append(SurveyPoint(x=float(loc[0]), y=float(loc[1]),
+                        z=float(loc[2]), layer=layer, id=mid, kind="survey"))
             except Exception:
                 continue   # one malformed entity never fails the whole read
 
@@ -284,11 +336,43 @@ class DxfAdapter(SourceAdapter):
         pages = [PageRead(words=words, raw_word_count=len(words),
                           width_pt=float(w), height_pt=float(h), kind="vector")]
 
+        # Provenance: is this a native CAD drawing, or a plot flattened into a
+        # DXF container (see fixtures/negative/README.md)? A flattened plot has
+        # no blocks to count and no DIMENSION entities it measured — every tell
+        # below is sufficient on its own, so any one flags the file.
+        # A flattened plot has no blocks to count, no DIMENSION entities, AND no
+        # trade semantics — just loose strokes on generic buckets (0/GEOMETRY/
+        # TEXT). A real drawing can also lack blocks and dimensions (components
+        # drawn as polylines), so the deciding tell is the LAYERS: if any
+        # geometry sits on a recognised trade layer (PERIMETER_COLUMNS, WALL,
+        # ROOF…), it is a real drawing, not a flatten. $LASTSAVEDBY == ezdxf only
+        # corroborates — legitimate CAD is routinely exported through ezdxf.
+        reasons = []
+        n_dims = sum(1 for g in geometry if g.kind == "dimension")
+        has_trade_layer = any(getattr(g, "trade", "") for g in geometry)
+        # Survey content is decisive native-CAD evidence: a flattened plot is loose
+        # 2D strokes and NEVER carries POINT spot levels, a polygon mesh, or a
+        # polyline sitting at a real elevation. A survey drawing legitimately has
+        # no blocks, no dimensions and no trade layer, so without this it would be
+        # mislabelled a fake — and told to "get the native DXF" it already is.
+        has_survey = bool(points) or any(
+            getattr(g, "elev", None) is not None for g in geometry)
+        if (not symbols and n_dims == 0 and geometry
+                and not has_trade_layer and not has_survey):
+            reasons.append("no blocks (INSERTs), no DIMENSION entities, and no "
+                           f"trade-semantic layers, yet {len(geometry)} loose "
+                           "line/polyline(s) — the signature of a flattened plot")
+            if str(doc.header.get("$LASTSAVEDBY", "") or "").strip().lower() == "ezdxf":
+                reasons.append("and $LASTSAVEDBY is 'ezdxf' (machine-written, not "
+                               "saved by a CAD application)")
+        provenance = {"suspect": bool(reasons), "reasons": reasons}
+
         # Producer is the adapter, not $LASTSAVEDBY — CAD files rarely set that
         # header, and the seam needs a stable identity for diagnostics.
         return ReadResult(pages=pages,
                           producer="ezdxf",
-                          symbols=symbols, geometry=geometry, units=units)
+                          symbols=symbols, geometry=geometry, points=points,
+                          units=units, provenance=provenance)
 
 
 def block_counts(symbols) -> dict:
